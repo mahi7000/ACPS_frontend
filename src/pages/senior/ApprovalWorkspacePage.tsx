@@ -3,125 +3,425 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { approvalsApi } from '@/services/api/approvals';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { ArrowLeft, CheckCircle, XCircle, FileText, CheckSquare } from 'lucide-react';
+import {
+  ArrowLeft, CheckCircle, XCircle, FileText, CheckSquare,
+  Building, Users, Clock, MessageSquare, Download, Send,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
+import { format, parseISO } from 'date-fns';
+
+type ActionModal = null | 'consent' | 'permit' | 'reject' | 'sendback';
 
 export const ApprovalWorkspacePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [appData, setAppData] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<'details' | 'documents' | 'comments' | 'history'>('details');
+  const [modal, setModal] = useState<ActionModal>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Action form state
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectCitation, setRejectCitation] = useState('');
+  const [sendbackInstructions, setSendbackInstructions] = useState('');
 
   useEffect(() => {
-    const fetchDetail = async () => {
+    (async () => {
       try {
         const data = await approvalsApi.getDetail(id!);
         setAppData(data);
-      } catch (err) {
+      } catch {
         toast.error('Failed to load application');
       } finally {
         setLoading(false);
       }
-    };
-    fetchDetail();
+    })();
   }, [id]);
 
-  const handleApprove = async () => {
+  const handleIssueConsent = async () => {
+    setSubmitting(true);
     try {
       await approvalsApi.issueConsent(id!);
-      toast.success('Building consent issued successfully');
+      toast.success('Planning consent issued — applicant notified');
       navigate('/senior/dashboard');
-    } catch (err) {
-      toast.error('Failed to issue consent');
-    }
+    } catch (e: any) {
+      toast.error(e.response?.data?.detail || 'Failed to issue consent');
+    } finally { setSubmitting(false); }
+  };
+
+  const handleIssuePermit = async () => {
+    setSubmitting(true);
+    try {
+      await approvalsApi.issuePermit(id!);
+      toast.success('Construction permit issued — permit PDF generated');
+      navigate('/senior/dashboard');
+    } catch (e: any) {
+      toast.error(e.response?.data?.detail || 'Failed to issue permit');
+    } finally { setSubmitting(false); }
   };
 
   const handleReject = async () => {
-    const reason = prompt('Please provide a reason for final rejection:');
-    if (!reason) return toast.error('Rejection reason is required');
+    if (rejectReason.trim().length < 50) { toast.error('Rejection reason must be at least 50 characters'); return; }
+    if (!rejectCitation.trim()) { toast.error('Regulation citation is required'); return; }
+    setSubmitting(true);
     try {
-      await approvalsApi.rejectFinal(id!, { reason });
-      toast.success('Application rejected');
+      await approvalsApi.rejectFinal(id!, { reason: rejectReason, regulation_citation: rejectCitation });
+      toast.success('Application rejected — applicant notified');
       navigate('/senior/dashboard');
-    } catch (err) {
-      toast.error('Failed to reject application');
-    }
+    } catch (e: any) {
+      toast.error(e.response?.data?.detail || 'Failed to reject');
+    } finally { setSubmitting(false); }
+  };
+
+  const handleSendBack = async () => {
+    if (sendbackInstructions.trim().length < 20) { toast.error('Please provide clear instructions (min 20 chars)'); return; }
+    setSubmitting(true);
+    try {
+      await approvalsApi.sendBackToReviewer(id!, { instructions: sendbackInstructions });
+      toast.success('Sent back to technical reviewer');
+      navigate('/senior/dashboard');
+    } catch (e: any) {
+      toast.error(e.response?.data?.detail || 'Failed to send back');
+    } finally { setSubmitting(false); }
   };
 
   if (loading) return <LoadingSpinner fullPage />;
-  if (!appData) return <div>Application not found</div>;
+  if (!appData) return <div className="p-8 text-slate-500">Application not found</div>;
+
+  const docs = appData.documents || [];
+  const comments = appData.comments || [];
+  const history = appData.timeline || appData.history || [];
+  const neighbors = appData.neighbors || [];
+  const consentIssued = appData.status === 'CONSENT_ISSUED' || appData.status === 'PERMIT_ISSUED';
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      <div className="flex items-center space-x-4 mb-4">
-        <Link to="/senior/dashboard" className="text-slate-500 hover:text-primary">
+    <div className="space-y-6 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="flex items-start gap-4">
+        <Link to="/senior/dashboard" className="text-slate-400 hover:text-primary mt-1">
           <ArrowLeft className="w-5 h-5" />
         </Link>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-slate-800">Final Approval: {appData.arn}</h1>
-          <p className="text-slate-500 text-sm">Reviewer Recommendation: <span className="font-medium text-green-600">Approve</span></p>
+          <p className="text-slate-500 text-sm mt-1">
+            {appData.applicant_name} · Cat {appData.building_category} · {appData.intended_use}
+          </p>
         </div>
-        <div className="flex-1" />
-        <StatusBadge status={appData.status} />
+        <StatusBadge status={appData.status} size="md" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="card p-6">
-            <h2 className="text-lg font-bold text-primary border-b pb-4 mb-4">Application Summary</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div><p className="text-sm text-slate-500">Applicant Name</p><p className="font-medium">{appData.applicant_name}</p></div>
-              <div><p className="text-sm text-slate-500">Category</p><p className="font-medium">{appData.building_category}</p></div>
-              <div><p className="text-sm text-slate-500">Intended Use</p><p className="font-medium">{appData.intended_use}</p></div>
-              <div><p className="text-sm text-slate-500">Project Value</p><p className="font-medium">{appData.project_value_etb} ETB</p></div>
-            </div>
-          </div>
+      {/* Reviewer recommendation banner */}
+      <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
+        <CheckSquare className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+        <div>
+          <p className="font-semibold text-green-800">Technical Review Sign-off</p>
+          <p className="text-sm text-green-700 mt-0.5">
+            Reviewed by <strong>{appData.reviewer_name || 'Assigned Officer'}</strong>.
+            All submitted documents meet the applicable building code requirements.
+            Recommendation: <strong>Approve</strong>.
+          </p>
+        </div>
+      </div>
 
-          <div className="card p-6">
-            <h2 className="text-lg font-bold text-primary border-b pb-4 mb-4">Technical Review Sign-off</h2>
-            <div className="bg-slate-50 border border-slate-200 p-4 rounded-lg flex items-start">
-              <CheckSquare className="w-6 h-6 text-green-600 mr-3 mt-0.5" />
-              <div>
-                <p className="font-semibold text-slate-800">Reviewed by: {appData.reviewer_name || 'Assigned Officer'}</p>
-                <p className="text-slate-600 text-sm mt-1">"All architectural and structural documents meet the local building code requirements. I recommend issuing building consent."</p>
+      {/* Action buttons */}
+      <div className="card p-5 flex flex-wrap gap-3 items-center">
+        <span className="text-sm font-semibold text-slate-600 mr-1">Actions:</span>
+
+        {!consentIssued && (
+          <button
+            onClick={() => setModal('consent')}
+            className="btn text-sm py-2 px-4 bg-green-600 text-white hover:bg-green-700 font-medium rounded-xl gap-2"
+          >
+            <CheckCircle className="w-4 h-4" /> Issue Planning Consent
+          </button>
+        )}
+
+        {consentIssued && (
+          <button
+            onClick={() => setModal('permit')}
+            className="btn text-sm py-2 px-4 bg-primary text-white hover:bg-primary/90 font-medium rounded-xl gap-2"
+          >
+            <FileText className="w-4 h-4" /> Issue Construction Permit
+          </button>
+        )}
+
+        <button
+          onClick={() => setModal('sendback')}
+          className="btn btn-outline text-sm py-2 px-4 gap-2"
+        >
+          <Send className="w-4 h-4" /> Send Back to Reviewer
+        </button>
+
+        <button
+          onClick={() => setModal('reject')}
+          className="btn btn-outline text-danger border-danger hover:bg-danger/10 text-sm py-2 px-4 gap-2"
+        >
+          <XCircle className="w-4 h-4" /> Reject Application
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex space-x-1 bg-slate-100 p-1 rounded-xl overflow-x-auto w-fit">
+        {([
+          { key: 'details', label: 'Details', icon: Building },
+          { key: 'documents', label: `Documents (${docs.length})`, icon: FileText },
+          { key: 'comments', label: `Comments (${comments.length})`, icon: MessageSquare },
+          { key: 'history', label: 'History', icon: Clock },
+        ] as const).map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setActiveTab(key)}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === key ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-primary'
+            }`}
+          >
+            <Icon className="w-4 h-4" /> {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="card p-6">
+        {/* Details */}
+        {activeTab === 'details' && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="font-semibold text-slate-700 mb-3 border-b pb-2">Building Information</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
+                {[
+                  ['Applicant', appData.applicant_name],
+                  ['Category', `Category ${appData.building_category}`],
+                  ['Intended Use', appData.intended_use],
+                  ['Project Value', `${(appData.project_value_etb || 0).toLocaleString()} ETB`],
+                  ['Address', appData.plot_address],
+                  ['Subcity / Woreda', `${appData.subcity_id} / ${appData.woreda}`],
+                  ['Height / Area', `${appData.height_m}m / ${appData.floor_area_sqm} sqm`],
+                  ['Floors (Above/Below)', `${appData.floors_above} / ${appData.floors_below}`],
+                  ['Architect', `${appData.architect_name} (${appData.architect_license})`],
+                ].map(([label, val]) => (
+                  <div key={label}>
+                    <p className="text-xs text-slate-500 uppercase tracking-wider">{label}</p>
+                    <p className="font-medium text-slate-800 mt-0.5">{val || 'N/A'}</p>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
-        </div>
 
-        <div className="space-y-6">
-          <div className="card p-6">
-            <h2 className="text-lg font-bold text-slate-800 mb-4">Decision</h2>
-            <div className="space-y-3">
-              <button onClick={handleApprove} className="btn btn-primary bg-green-600 hover:bg-green-700 w-full py-3 justify-center text-lg">
-                <CheckCircle className="w-5 h-5 mr-2" /> Issue Consent
-              </button>
-              <button onClick={handleReject} className="btn btn-outline text-danger border-danger hover:bg-danger/10 w-full py-3 justify-center text-lg">
-                <XCircle className="w-5 h-5 mr-2" /> Reject Application
+            {neighbors.length > 0 && (
+              <div>
+                <h3 className="font-semibold text-slate-700 mb-3 border-b pb-2 flex items-center gap-2">
+                  <Users className="w-4 h-4" /> Neighbor Consents ({neighbors.length})
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {neighbors.map((n: any, i: number) => (
+                    <div key={i} className="flex items-center justify-between bg-slate-50 rounded-lg p-3 border border-slate-200">
+                      <div>
+                        <p className="font-medium text-slate-800 text-sm">{n.neighbor_name}</p>
+                        <p className="text-xs text-slate-500">{n.neighbor_phone}</p>
+                      </div>
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{n.status || 'SUBMITTED'}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Documents */}
+        {activeTab === 'documents' && (
+          <div className="space-y-3">
+            {docs.length === 0 && <p className="text-slate-400 italic text-sm">No documents found.</p>}
+            {docs.map((doc: any) => (
+              <div key={doc.document_id} className="flex items-center justify-between bg-slate-50 rounded-xl border border-slate-200 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white rounded-lg border border-slate-200">
+                    <FileText className="w-4 h-4 text-slate-500" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-800 text-sm">{doc.document_type?.replace(/_/g, ' ')}</p>
+                    <p className="text-xs text-slate-400">{doc.file_name} · v{doc.version_number}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                    doc.validation_status === 'ACCEPTED' ? 'bg-green-100 text-green-700' :
+                    doc.validation_status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                    'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {doc.validation_status || 'PENDING'}
+                  </span>
+                  <button className="p-1.5 text-slate-400 hover:text-primary rounded-lg hover:bg-slate-100">
+                    <Download className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Comments */}
+        {activeTab === 'comments' && (
+          <div className="space-y-3">
+            {comments.length === 0 && <p className="text-slate-400 italic text-sm">No comments on this application.</p>}
+            {comments.map((c: any) => (
+              <div
+                key={c.comment_id}
+                className={`rounded-xl border p-4 ${
+                  c.resolution_status === 'OPEN' ? 'bg-orange-50 border-orange-200' :
+                  'bg-green-50 border-green-200'
+                }`}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                    c.resolution_status === 'OPEN' ? 'bg-orange-200 text-orange-800' : 'bg-green-200 text-green-800'
+                  }`}>
+                    {c.category} · {c.resolution_status}
+                  </span>
+                  <span className="text-xs text-slate-400">{c.author_name}</span>
+                </div>
+                <p className="text-slate-700 text-sm">{c.content}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* History */}
+        {activeTab === 'history' && (
+          <div className="space-y-4 pl-4 border-l-2 border-slate-200 ml-2 py-2">
+            {history.length === 0 && <p className="text-slate-400 italic text-sm">No history events.</p>}
+            {history.map((event: any, idx: number) => (
+              <div key={idx} className="relative pl-6">
+                <div className="absolute -left-[35px] top-1 w-4 h-4 rounded-full bg-primary ring-4 ring-white" />
+                <p className="text-xs text-slate-400 mb-1">
+                  {format(parseISO(event.created_at), 'PPp')} · {event.actor_name}
+                </p>
+                <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                  <p className="font-medium text-slate-800 text-sm">
+                    Status → <span className="text-primary">{event.new_status}</span>
+                  </p>
+                  {event.note && <p className="text-xs text-slate-500 mt-1">{event.note}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Modals ── */}
+
+      {/* Issue Consent confirm */}
+      {modal === 'consent' && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="text-center mb-5">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <CheckCircle className="w-8 h-8 text-green-600" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-800">Issue Planning Consent?</h2>
+              <p className="text-slate-500 text-sm mt-2">
+                This will issue a <strong>Planning Consent document</strong> with a QR code and notify the applicant. The application will move to payment stage.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setModal(null)} className="btn btn-outline flex-1">Cancel</button>
+              <button onClick={handleIssueConsent} disabled={submitting} className="btn flex-1 bg-green-600 text-white hover:bg-green-700 font-medium rounded-xl py-2.5">
+                {submitting ? 'Issuing...' : 'Issue Consent'}
               </button>
             </div>
-            <p className="text-xs text-slate-500 mt-4 text-center">
-              Issuing consent will automatically notify the applicant and generate the consent document.
-            </p>
-          </div>
-
-          <div className="card p-6">
-            <h2 className="text-lg font-bold text-slate-800 mb-4">Quick Links</h2>
-            <ul className="space-y-2">
-              <li>
-                <button className="flex items-center text-primary hover:underline text-sm">
-                  <FileText className="w-4 h-4 mr-2" /> View All Documents
-                </button>
-              </li>
-              <li>
-                <button className="flex items-center text-primary hover:underline text-sm">
-                  <FileText className="w-4 h-4 mr-2" /> View Review History
-                </button>
-              </li>
-            </ul>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Issue Permit confirm */}
+      {modal === 'permit' && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="text-center mb-5">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                <FileText className="w-8 h-8 text-primary" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-800">Issue Construction Permit?</h2>
+              <p className="text-slate-500 text-sm mt-2">
+                This will generate and issue the official <strong>Construction Permit PDF</strong> with QR code. The permit will be immediately verifiable at <code>/verify</code>.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setModal(null)} className="btn btn-outline flex-1">Cancel</button>
+              <button onClick={handleIssuePermit} disabled={submitting} className="btn btn-primary flex-1">
+                {submitting ? 'Issuing...' : 'Issue Permit'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject modal */}
+      {modal === 'reject' && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6">
+            <h2 className="text-xl font-bold text-slate-800 mb-1">Reject Application</h2>
+            <p className="text-sm text-slate-500 mb-5">This action is final. The applicant will be notified with your reason.</p>
+            <div className="space-y-4">
+              <div>
+                <label className="label">Rejection Reason <span className="text-red-500">*</span></label>
+                <textarea
+                  value={rejectReason}
+                  onChange={e => setRejectReason(e.target.value)}
+                  rows={4}
+                  placeholder="Provide a comprehensive reason (min 50 characters)..."
+                  className="input-field"
+                />
+                <p className={`text-xs mt-1 ${rejectReason.length < 50 ? 'text-orange-500' : 'text-green-600'}`}>
+                  {rejectReason.length}/50 characters minimum
+                </p>
+              </div>
+              <div>
+                <label className="label">Regulation Citation <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  value={rejectCitation}
+                  onChange={e => setRejectCitation(e.target.value)}
+                  placeholder="e.g. EBCS 2, Section 4.3.1"
+                  className="input-field"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setModal(null)} className="btn btn-outline flex-1">Cancel</button>
+              <button onClick={handleReject} disabled={submitting} className="btn flex-1 bg-red-600 text-white hover:bg-red-700 font-medium rounded-xl py-2.5">
+                {submitting ? 'Rejecting...' : 'Confirm Rejection'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Send back modal */}
+      {modal === 'sendback' && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-slate-800 mb-1">Send Back to Reviewer</h2>
+            <p className="text-sm text-slate-500 mb-4">The assigned technical reviewer will be notified with your instructions.</p>
+            <div>
+              <label className="label">Instructions for Reviewer <span className="text-red-500">*</span></label>
+              <textarea
+                value={sendbackInstructions}
+                onChange={e => setSendbackInstructions(e.target.value)}
+                rows={4}
+                placeholder="What should the reviewer check or follow up on?"
+                className="input-field"
+              />
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setModal(null)} className="btn btn-outline flex-1">Cancel</button>
+              <button onClick={handleSendBack} disabled={submitting} className="btn btn-primary flex-1">
+                {submitting ? 'Sending...' : 'Send Back'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

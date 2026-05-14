@@ -21,6 +21,21 @@ export const reviewsApi = {
     const res = await apiClient.put(`/applications/${applicationId}/comments/${commentId}/resolve/`, data);
     return res.data;
   },
+  validateDocument: async (
+    applicationId: string,
+    documentId: string,
+    data: { validation_status: 'ACCEPTED' | 'REJECTED'; validation_notes?: string }
+  ) => {
+    const res = await apiClient.put(`/applications/${applicationId}/documents/${documentId}/validate/`, data);
+    return res.data;
+  },
+  scheduleInspection: async (
+    applicationId: string,
+    data: { inspection_type: string; scheduled_date: string; notes?: string }
+  ) => {
+    const res = await apiClient.post(`/applications/${applicationId}/schedule-inspection/`, data);
+    return res.data;
+  },
   submitDecision: async (applicationId: string, data: any) => {
     const res = await apiClient.post(`/applications/${applicationId}/review-decision/`, data);
     return res.data;

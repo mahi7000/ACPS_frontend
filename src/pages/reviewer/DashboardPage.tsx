@@ -3,9 +3,16 @@ import { Link } from 'react-router-dom';
 import { reviewsApi } from '@/services/api/reviews';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
-import { DataTable } from "@/components/tables/DataTable";
+import { DataTable } from '@/components/tables/DataTable';
 import type { ColumnDef } from '@/components/tables/DataTable';
-import { FileText, Clock, CheckSquare } from 'lucide-react';
+import { FileText, Clock, CheckSquare, TrendingUp, AlertTriangle, Flame } from 'lucide-react';
+import { format, differenceInDays } from 'date-fns';
+
+const getSLAColor = (daysOpen: number, revisions: number) => {
+  if (daysOpen > 14 || revisions > 3) return { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-300', label: 'Critical', icon: <Flame className="w-3 h-3" /> };
+  if (daysOpen > 7) return { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-300', label: 'Warning', icon: <AlertTriangle className="w-3 h-3" /> };
+  return { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-300', label: 'On Track', icon: <Clock className="w-3 h-3" /> };
+};
 
 export const ReviewerDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -14,8 +21,20 @@ export const ReviewerDashboard: React.FC = () => {
   useEffect(() => {
     const fetchQueue = async () => {
       try {
+        // API returns only applications assigned to the current user
         const res = await reviewsApi.getQueue();
-        setQueue(res.results || res);
+        const raw = res.results || res || [];
+        // Filter by assigned status
+        const filtered = raw.filter((a: any) => 
+          a.status === 'UNDER_REVIEW' || a.status === 'REVISION_REQUIRED'
+        );
+        // Sort by urgency: most days open first
+        const sorted = [...filtered].sort((a, b) => {
+          const da = differenceInDays(new Date(), new Date(a.created_at));
+          const db = differenceInDays(new Date(), new Date(b.created_at));
+          return db - da;
+        });
+        setQueue(sorted);
       } catch (err) {
         console.error('Failed to fetch queue', err);
       } finally {
@@ -26,66 +45,147 @@ export const ReviewerDashboard: React.FC = () => {
   }, []);
 
   const totalInQueue = queue.length;
-  const highPriority = queue.filter(a => a.building_category === 'C').length;
+  const critical = queue.filter(a => {
+    const d = differenceInDays(new Date(), new Date(a.created_at));
+    return d > 14 || (a.revision_cycle || 0) > 3;
+  }).length;
+  const warning = queue.filter(a => {
+    const d = differenceInDays(new Date(), new Date(a.created_at));
+    return d > 7 && d <= 14;
+  }).length;
 
   const columns: ColumnDef<any>[] = [
-    { header: 'ARN', accessorKey: 'arn', cell: (i) => <span className="font-medium text-primary">{i.arn}</span> },
-    { header: 'Category', accessorKey: 'building_category' },
+    {
+      header: 'ARN',
+      accessorKey: 'arn',
+      cell: (i) => <span className="font-mono font-semibold text-primary text-sm">{i.arn || 'Pending'}</span>,
+    },
+    {
+      header: 'Category',
+      accessorKey: 'building_category',
+      cell: (i) => (
+        <span className={`px-2 py-1 rounded text-xs font-bold ${
+          i.building_category === 'C' ? 'bg-red-100 text-red-700' :
+          i.building_category === 'B' ? 'bg-orange-100 text-orange-700' :
+          'bg-blue-100 text-blue-700'
+        }`}>
+          Cat {i.building_category}
+        </span>
+      ),
+    },
     { header: 'Applicant', cell: (i) => i.applicant_name || 'N/A' },
     { header: 'Status', cell: (i) => <StatusBadge status={i.status} /> },
-    { header: 'Actions', cell: (i) => (
-      <Link to={`/reviewer/applications/${i.application_id}`} className="btn btn-primary text-xs py-1.5 px-3">
-        Review
-      </Link>
-    )},
+    {
+      header: 'Days Open',
+      cell: (i) => {
+        const d = differenceInDays(new Date(), new Date(i.created_at));
+        return <span className={`font-semibold ${d > 14 ? 'text-red-600' : d > 7 ? 'text-orange-600' : 'text-slate-700'}`}>{d}d</span>;
+      },
+    },
+    {
+      header: 'Revisions',
+      cell: (i) => {
+        const r = i.revision_cycle || 0;
+        return <span className={`font-semibold ${r > 3 ? 'text-red-600' : 'text-slate-700'}`}>{r}</span>;
+      },
+    },
+    {
+      header: 'Urgency',
+      cell: (i) => {
+        const days = differenceInDays(new Date(), new Date(i.created_at));
+        const sla = getSLAColor(days, i.revision_cycle || 0);
+        return (
+          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border ${sla.bg} ${sla.text} ${sla.border}`}>
+            {sla.icon} {sla.label}
+          </span>
+        );
+      },
+    },
+    {
+      header: 'Actions',
+      cell: (i) => (
+        <Link to={`/reviewer/applications/${i.application_id}`} className="btn btn-primary text-xs py-1.5 px-3">
+          Review
+        </Link>
+      ),
+    },
   ];
 
   if (loading) return <LoadingSpinner fullPage />;
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-primary">Technical Review Dashboard</h1>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-primary">Technical Review Dashboard</h1>
+          <p className="text-slate-500 text-sm mt-1">Your assigned applications queue</p>
+        </div>
+        <div className="text-xs text-slate-400 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
+          Last updated: {format(new Date(), 'HH:mm')}
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="card p-6 border-l-4 border-primary">
+      {/* Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+        <div className="card p-5 border-l-4 border-primary">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">My Queue</p>
-              <h3 className="text-3xl font-bold text-slate-800 mt-2">{totalInQueue}</h3>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">My Queue</p>
+              <h3 className="text-3xl font-bold text-slate-800 mt-1">{totalInQueue}</h3>
+              <p className="text-xs text-slate-400 mt-1">applications assigned</p>
             </div>
-            <div className="p-3 bg-primary/10 text-primary rounded-lg">
-              <FileText className="w-6 h-6" />
-            </div>
+            <div className="p-2.5 bg-primary/10 text-primary rounded-xl"><FileText className="w-5 h-5" /></div>
           </div>
         </div>
 
-        <div className="card p-6 border-l-4 border-warning">
+        <div className="card p-5 border-l-4 border-red-500">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">High Priority (Cat C)</p>
-              <h3 className="text-3xl font-bold text-slate-800 mt-2">{highPriority}</h3>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Critical</p>
+              <h3 className="text-3xl font-bold text-red-600 mt-1">{critical}</h3>
+              <p className="text-xs text-slate-400 mt-1">&gt;14 days or &gt;3 revisions</p>
             </div>
-            <div className="p-3 bg-warning/10 text-warning rounded-lg">
-              <Clock className="w-6 h-6" />
-            </div>
+            <div className="p-2.5 bg-red-100 text-red-600 rounded-xl"><Flame className="w-5 h-5" /></div>
           </div>
         </div>
 
-        <div className="card p-6 border-l-4 border-green-500">
+        <div className="card p-5 border-l-4 border-orange-400">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">Completed Today</p>
-              <h3 className="text-3xl font-bold text-slate-800 mt-2">0</h3>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Warning</p>
+              <h3 className="text-3xl font-bold text-orange-600 mt-1">{warning}</h3>
+              <p className="text-xs text-slate-400 mt-1">7–14 days open</p>
             </div>
-            <div className="p-3 bg-green-100 text-green-600 rounded-lg">
-              <CheckSquare className="w-6 h-6" />
+            <div className="p-2.5 bg-orange-100 text-orange-600 rounded-xl"><AlertTriangle className="w-5 h-5" /></div>
+          </div>
+        </div>
+
+        <div className="card p-5 border-l-4 border-green-500">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Completed This Week</p>
+              <h3 className="text-3xl font-bold text-green-700 mt-1">—</h3>
+              <p className="text-xs text-slate-400 mt-1">from API</p>
             </div>
+            <div className="p-2.5 bg-green-100 text-green-600 rounded-xl"><CheckSquare className="w-5 h-5" /></div>
           </div>
         </div>
       </div>
 
+      {/* SLA legend */}
+      <div className="flex items-center gap-4 text-xs text-slate-500">
+        <span className="font-medium">SLA guide:</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-400 inline-block" /> On Track (&lt;7d)</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-400 inline-block" /> Warning (7–14d)</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> Critical (&gt;14d or &gt;3 revisions)</span>
+      </div>
+
       <div className="card p-6">
-        <h2 className="text-lg font-bold text-primary mb-4">Assigned Applications</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-bold text-primary flex items-center gap-2">
+            <TrendingUp className="w-5 h-5" /> Assigned Applications
+          </h2>
+        </div>
         <DataTable data={queue} columns={columns} loading={loading} />
       </div>
     </div>

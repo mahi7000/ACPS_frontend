@@ -143,7 +143,7 @@ export const ProfilePage: React.FC = () => {
                 <h3 className="text-lg font-medium text-slate-800 mb-4">National ID / Passport</h3>
                 <FileUploader 
                   onUpload={(files) => handleDocumentUpload(files, 'NATIONAL_ID')} 
-                  acceptedTypes={['application/pdf', 'image/jpeg', 'image/png']} 
+                  acceptedTypes={['application/pdf']} 
                   maxSizeMB={5}
                 />
               </div>
@@ -151,7 +151,7 @@ export const ProfilePage: React.FC = () => {
                 <h3 className="text-lg font-medium text-slate-800 mb-4">TIN Certificate</h3>
                 <FileUploader 
                   onUpload={(files) => handleDocumentUpload(files, 'TIN_CERTIFICATE')} 
-                  acceptedTypes={['application/pdf', 'image/jpeg', 'image/png']} 
+                  acceptedTypes={['application/pdf']} 
                   maxSizeMB={5}
                 />
               </div>

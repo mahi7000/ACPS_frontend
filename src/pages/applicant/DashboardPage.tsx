@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { applicationsApi } from '@/services/api/applications';
 import { useAuthStore } from '@/stores/authStore';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
-import { FileText, PlusCircle, CheckCircle, Clock } from 'lucide-react';
+import { FileText, PlusCircle, CheckCircle, Clock, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
+import toast from 'react-hot-toast';
 
 export const ApplicantDashboard: React.FC = () => {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [applications, setApplications] = useState<any[]>([]);
 
@@ -26,6 +28,26 @@ export const ApplicantDashboard: React.FC = () => {
     };
     fetchDashboardData();
   }, []);
+
+  const handlePayNow = async (applicationId: string) => {
+    try {
+      const invoice = await applicationsApi.getOrCreateInvoice(applicationId);
+
+      if (invoice?.id) {
+        navigate(`/applicant/payment/${invoice.id}`);
+      } else if (invoice?.invoice_id) {
+        navigate(`/applicant/payment/${invoice.invoice_id}`);
+      } else {
+        toast.error('Unable to create invoice. Please try again.');
+      }
+    } catch (error: any) {
+      if (error.response?.data?.detail === 'Invoice not found') {
+        toast.error('Invoice not found. Please submit your application first.');
+      } else {
+        toast.error('Failed to process payment. Please try again.');
+      }
+    }
+  };
 
   const pendingApps = applications.filter(a => ['DRAFT', 'PAYMENT_PENDING', 'REVISION_REQUIRED'].includes(a.status)).length;
   const inProgressApps = applications.filter(a => ['UNDER_REVIEW', 'AWAITING_ASSIGNMENT', 'AWAITING_SENIOR_APPROVAL'].includes(a.status)).length;
@@ -106,7 +128,16 @@ export const ApplicantDashboard: React.FC = () => {
                   <td className="px-6 py-4">Category {app.building_category}</td>
                   <td className="px-6 py-4"><StatusBadge status={app.status} /></td>
                   <td className="px-6 py-4">{format(new Date(app.created_at), 'MMM dd, yyyy')}</td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-6 py-4 text-right space-x-2">
+                    {app.status === 'PAYMENT_PENDING' && (
+                      <button
+                        onClick={() => handlePayNow(app.application_id)}
+                        className="text-green-600 hover:text-green-700 font-medium inline-flex items-center"
+                      >
+                        <CreditCard className="w-4 h-4 mr-1" />
+                        Pay Now
+                      </button>
+                    )}
                     <Link to={`/applicant/applications/${app.application_id}`} className="text-highlight hover:text-highlight/80 font-medium">
                       View Details
                     </Link>

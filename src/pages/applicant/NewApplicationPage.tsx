@@ -27,7 +27,16 @@ const buildingDetailsSchema = z.object({
   project_value_etb: z.number().min(1000, 'Must be at least 1000'),
 });
 
+const neighborSchema = z.object({
+  neighbors: z.array(z.object({
+    name: z.string().min(1, 'Name is required'),
+    phone: z.string().min(1, 'Phone is required'),
+    file: z.any().nullable()
+  })).min(1, 'At least one neighbor consent is required')
+});
+
 type BuildingDetails = z.infer<typeof buildingDetailsSchema>;
+type NeighborFormData = z.infer<typeof neighborSchema>;
 
 export const NewApplicationPage: React.FC = () => {
   const navigate = useNavigate();
@@ -42,8 +51,9 @@ export const NewApplicationPage: React.FC = () => {
   });
 
   // Step 3 Form (Neighbors)
-  const { register: reg3, control: control3, handleSubmit: handle3, formState: {} } = useForm({
-    defaultValues: { neighbors: [{ name: '', phone: '', file: null as File[] | null }] }
+  const { register: reg3, control: control3, handleSubmit: handle3, formState: { errors: err3 }, setValue } = useForm<NeighborFormData>({
+    resolver: zodResolver(neighborSchema),
+    defaultValues: { neighbors: [{ name: '', phone: '', file: null }] }
   });
   const { fields: neighborFields, append: appendNeighbor, remove: removeNeighbor } = useFieldArray({ control: control3, name: 'neighbors' });
 
@@ -77,27 +87,48 @@ export const NewApplicationPage: React.FC = () => {
   };
 
   const handleDocUpload = async (files: File[], docType: string) => {
-    if (!applicationId || !files.length) return;
+    if (!applicationId || !files?.length) return;
+
+    const file = files[0];
     const formData = new FormData();
-    formData.append('file', files[0]);
+
+    // LOGIC CHECK: Are these the names the Django Serializer expects?
+    // If the backend expects 'document' instead of 'file', change it here.
     formData.append('document_type', docType);
+    formData.append('file', file);
+
+    const loadingToast = toast.loading(`Uploading ${docType}...`);
+
     try {
+      // We move the logic into the service to ensure the interceptor doesn't mess it up
       await applicationsApi.uploadDocument(applicationId, formData);
-      toast.success(`${docType.replace('_', ' ')} uploaded`);
+
+      toast.success('Upload successful!', { id: loadingToast });
+
       const docsRes = await applicationsApi.getRequiredDocs(applicationId);
       setRequiredDocs(docsRes || []);
-    } catch (err) {
-      toast.error('Upload failed');
+    } catch (err: any) {
+      console.error('SERVER RESPONSE ERROR:', err.response?.data);
+
+      // This will show exactly what Django is complaining about
+      const detail = JSON.stringify(err.response?.data);
+      toast.error(`Error: ${detail}`, { id: loadingToast, duration: 6000 });
     }
   };
 
-  const onStep3Submit = async (data: any) => {
+  const handleNeighborFileUpload = (index: number, files: File[]) => {
+    if (files && files.length > 0) {
+      setValue(`neighbors.${index}.file`, files, { shouldValidate: true, shouldDirty: true });
+    }
+  };
+
+  const onStep3Submit = async (data: NeighborFormData) => {
     if (!applicationId) return;
     setLoading(true);
     try {
       // Upload neighbor consents
       for (const neighbor of data.neighbors) {
-        if (neighbor.file && neighbor.file.length > 0) {
+        if (neighbor.file && Array.isArray(neighbor.file) && neighbor.file.length > 0) {
           const formData = new FormData();
           formData.append('neighbor_name', neighbor.name);
           formData.append('neighbor_phone', neighbor.phone);
@@ -118,11 +149,30 @@ export const NewApplicationPage: React.FC = () => {
     if (!applicationId) return;
     setLoading(true);
     try {
-      await applicationsApi.submit(applicationId);
-      toast.success('Application submitted successfully!');
-      navigate(`/applicant/payment/${applicationId}`);
+      const result = await applicationsApi.submit(applicationId);
+      toast.success('Application submitted successfully! You can pay the application fee from your dashboard.', { duration: 6000 });
+
+      // Navigate to dashboard - they'll pay from there
+      navigate('/applicant/dashboard');
+
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Completeness check failed. Ensure all documents are uploaded.');
+      const errorData = err.response?.data;
+
+      if (errorData?.missing_documents?.length) {
+        const list = errorData.missing_documents
+          .map((d: any) => `• ${d.label || d.document_type.replace(/_/g, ' ')}`)
+          .join('\n');
+
+        toast.error(
+          `Submission blocked. The system requires the following documents to be accepted first:\n\n${list}\n\nPlease contact support if you have already uploaded these.`,
+          { duration: 10000 }
+        );
+      } else {
+        toast.error(
+          errorData?.detail || errorData?.error || 'Submission failed. Please ensure all required documents are uploaded.',
+          { duration: 7000 }
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -143,27 +193,25 @@ export const NewApplicationPage: React.FC = () => {
       {/* Stepper */}
       <div className="relative flex justify-between items-center w-full mb-12">
         <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-full h-1 bg-slate-200 z-0 rounded-full" />
-        <div 
+        <div
           className="absolute left-0 top-1/2 transform -translate-y-1/2 h-1 bg-primary z-0 rounded-full transition-all duration-300"
           style={{ width: `${((currentStep - 1) / 3) * 100}%` }}
         />
-        
+
         {steps.map((step) => {
           const Icon = step.icon;
           const isActive = currentStep === step.id;
           const isCompleted = currentStep > step.id;
-          
+
           return (
             <div key={step.id} className="relative z-10 flex flex-col items-center">
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center border-4 border-background transition-colors ${
-                isActive ? 'bg-primary text-white shadow-md' : 
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center border-4 border-background transition-colors ${isActive ? 'bg-primary text-white shadow-md' :
                 isCompleted ? 'bg-primary text-white' : 'bg-slate-200 text-slate-500'
-              }`}>
+                }`}>
                 <Icon className="w-5 h-5" />
               </div>
-              <span className={`absolute top-14 text-xs font-medium w-32 text-center ${
-                isActive || isCompleted ? 'text-primary' : 'text-slate-500'
-              }`}>
+              <span className={`absolute top-14 text-xs font-medium w-32 text-center ${isActive || isCompleted ? 'text-primary' : 'text-slate-500'
+                }`}>
                 {step.title}
               </span>
             </div>
@@ -228,9 +276,9 @@ export const NewApplicationPage: React.FC = () => {
                     )}
                   </div>
                   {!doc.uploaded && (
-                    <FileUploader 
+                    <FileUploader
                       onUpload={(files) => handleDocUpload(files, doc.document_type)}
-                      acceptedTypes={['application/pdf', 'application/x-autocad', 'image/jpeg']}
+                      acceptedTypes={['application/pdf']}
                       maxSizeMB={20}
                       label=""
                     />
@@ -241,7 +289,7 @@ export const NewApplicationPage: React.FC = () => {
                 <p className="text-slate-500 italic">No specific documents required yet, or failed to load checklist.</p>
               )}
             </div>
-            
+
             <div className="flex justify-between pt-6">
               <button onClick={() => setCurrentStep(1)} className="btn btn-outline">
                 <ChevronLeft className="w-4 h-4 mr-2" /> Previous
@@ -258,7 +306,7 @@ export const NewApplicationPage: React.FC = () => {
           <form onSubmit={handle3(onStep3Submit)} className="space-y-6">
             <h2 className="text-xl font-bold text-slate-800 border-b pb-2 mb-6">Neighbor Consents</h2>
             <p className="text-sm text-slate-600 mb-4">At least one neighbor consent is required.</p>
-            
+
             {neighborFields.map((field, index) => (
               <div key={field.id} className="bg-slate-50 p-6 rounded-lg border border-slate-200 relative">
                 {index > 0 && (
@@ -270,25 +318,26 @@ export const NewApplicationPage: React.FC = () => {
                   <div>
                     <label className="label">Neighbor Name</label>
                     <input type="text" {...reg3(`neighbors.${index}.name` as const)} className="input-field" required />
+                    {err3.neighbors?.[index]?.name && <p className="text-danger text-xs">{err3.neighbors[index]?.name?.message}</p>}
                   </div>
                   <div>
                     <label className="label">Phone Number</label>
                     <input type="text" {...reg3(`neighbors.${index}.phone` as const)} className="input-field" required />
+                    {err3.neighbors?.[index]?.phone && <p className="text-danger text-xs">{err3.neighbors[index]?.phone?.message}</p>}
                   </div>
                 </div>
                 <div>
                   <label className="label">Consent Form Document</label>
-                  <FileUploader 
-                    onUpload={() => { /* Custom logic to update rhf value if needed */ }}
-                    acceptedTypes={['application/pdf', 'image/jpeg', 'image/png']}
+                  <FileUploader
+                    onUpload={(files) => handleNeighborFileUpload(index, files)}
+                    acceptedTypes={['application/pdf']}
                     maxSizeMB={10}
                     label=""
                   />
-                  {/* Note: In a real implementation, we'd sync the FileUploader state with react-hook-form */}
                 </div>
               </div>
             ))}
-            
+
             <button type="button" onClick={() => appendNeighbor({ name: '', phone: '', file: null })} className="btn btn-outline w-full py-3 border-dashed">
               <PlusCircle className="w-5 h-5 mr-2" /> Add Another Neighbor
             </button>
