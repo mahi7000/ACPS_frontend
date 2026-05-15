@@ -41,7 +41,7 @@ export const AuditLogPage: React.FC = () => {
       const details = i.details || {};
       const resType = i.resource_type || details.resource_type;
       const resId = i.resource_id || details.resource_id;
-      const oldStat = details.previous_status || details.old_status;
+      // const oldStat = details.previous_status || details.old_status;
       const newStat = details.new_status;
       
       return (
