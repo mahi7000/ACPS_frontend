@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { applicationsApi } from '@/services/api/applications';
 import { StatusBadge } from '@/components/common/StatusBadge';
@@ -16,6 +17,7 @@ import {
 import toast from 'react-hot-toast';
 
 export const ApplicationDetailPage: React.FC = () => {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [app, setApp] = useState<any>(null);
@@ -280,11 +282,11 @@ export const ApplicationDetailPage: React.FC = () => {
 
   /* ── Table columns ── */
   const docColumns: ColumnDef<any>[] = [
-    { header: 'Type', accessorKey: 'document_type', cell: (i) => i.document_type.replace(/_/g, ' ') },
-    { header: 'Name', accessorKey: 'file_name' },
-    { header: 'Version', accessorKey: 'version_number', cell: (i) => `v${i.version_number}` },
+    { header: t('app_detail.doc_type'), accessorKey: 'document_type', cell: (i) => i.document_type.replace(/_/g, ' ') },
+    { header: t('app_detail.file_name'), accessorKey: 'file_name' },
+    { header: t('app_detail.version'), accessorKey: 'version_number', cell: (i) => `v${i.version_number}` },
     {
-      header: 'Status', cell: (i) => (
+      header: t('app_detail.doc_status'), cell: (i) => (
         <span className={`px-2 py-1 rounded text-xs font-medium ${i.validation_status === 'ACCEPTED' ? 'bg-green-100 text-green-700' :
           i.validation_status === 'REJECTED' ? 'bg-red-100 text-red-700' :
             'bg-yellow-100 text-yellow-700'
@@ -294,17 +296,17 @@ export const ApplicationDetailPage: React.FC = () => {
       )
     },
     {
-      header: 'Actions', cell: (i: any) => (
+      header: t('app_detail.actions'), cell: (i: any) => (
         <a href={i.file_url || i.file_path || '#'} target="_blank" rel="noreferrer" className="text-primary hover:text-primary/80"><Download className="w-4 h-4" /></a>
       )
     },
   ];
 
   const neighborColumns: ColumnDef<any>[] = [
-    { header: 'Name', accessorKey: 'neighbor_name' },
-    { header: 'Phone', accessorKey: 'neighbor_phone' },
-    { header: 'Status', cell: (i: any) => <span className="bg-slate-100 px-2 py-1 rounded text-xs">{i.status}</span> },
-    { header: 'Consent', cell: (i: any) => i.consent_document_url || i.file_url ? <a href={i.consent_document_url || i.file_url} target="_blank" rel="noreferrer" className="text-primary hover:underline"><Download className="w-4 h-4 inline mr-1" />View</a> : <span className="text-slate-400 text-xs">No file</span> },
+    { header: t('app_detail.name_col'), accessorKey: 'neighbor_name' },
+    { header: t('app_detail.phone_col'), accessorKey: 'neighbor_phone' },
+    { header: t('app_detail.doc_status'), cell: (i: any) => <span className="bg-slate-100 px-2 py-1 rounded text-xs">{i.status}</span> },
+    { header: t('app_detail.consent_col'), cell: (i: any) => i.consent_document_url || i.file_url ? <a href={i.consent_document_url || i.file_url} target="_blank" rel="noreferrer" className="text-primary hover:underline"><Download className="w-4 h-4 inline mr-1" />{t('app_detail.view')}</a> : <span className="text-slate-400 text-xs">{t('app_detail.no_file')}</span> },
     ...(isDraft ? [{
       header: '',
       cell: (i: any) => (
@@ -327,8 +329,8 @@ export const ApplicationDetailPage: React.FC = () => {
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Application {app.arn || 'Draft'}</h1>
-          <p className="text-slate-500 text-sm">Created on {format(new Date(app.created_at), 'PPP')}</p>
+          <h1 className="text-2xl font-bold text-slate-800">Application {app.arn || t('app_detail.draft')}</h1>
+          <p className="text-slate-500 text-sm">{t('app_detail.created_on')} {format(new Date(app.created_at), 'PPP')}</p>
         </div>
         <div className="flex-1" />
         <StatusBadge status={app.status} size="md" />
@@ -341,7 +343,7 @@ export const ApplicationDetailPage: React.FC = () => {
               className="btn btn-primary inline-flex items-center gap-2"
             >
               <Download className="w-4 h-4" />
-              Download Permit
+              {t('app_detail.download_permit')}
             </button>
             <button 
               onClick={handleVerifyPermit}
@@ -349,14 +351,14 @@ export const ApplicationDetailPage: React.FC = () => {
               title="Public verification page"
             >
               <ExternalLink className="w-4 h-4" />
-              Verify
+              {t('app_detail.verify')}
             </button>
           </div>
         )}
         
         {(app.status === 'PAYMENT_PENDING' || app.status === 'PAYMENT_EXPIRED') && (
           <button onClick={handlePayNow} className="btn btn-primary inline-flex items-center gap-2">
-            Pay Fees
+            {t('app_detail.pay_fees')}
           </button>
         )}
         {isDraft && (
@@ -365,7 +367,7 @@ export const ApplicationDetailPage: React.FC = () => {
             disabled={submitting}
             className="btn btn-primary"
           >
-            {submitting ? 'Submitting...' : 'Submit Application'}
+            {submitting ? t('app_detail.submitting') : t('app_detail.submit_app')}
           </button>
         )}
       </div>
@@ -376,16 +378,16 @@ export const ApplicationDetailPage: React.FC = () => {
           <Award className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
           <div>
             <p className="font-semibold text-green-800">
-              {app.status === 'PERMIT_ISSUED' ? 'Construction Permit Issued' : 
-               app.status === 'CONSENT_ISSUED' ? 'Planning Consent Issued' : 
-               'Completion Certificate Issued'}
+              {app.status === 'PERMIT_ISSUED' ? t('app_detail.permit_issued') : 
+               app.status === 'CONSENT_ISSUED' ? t('app_detail.consent_issued') : 
+               t('app_detail.completion_issued')}
             </p>
             <p className="text-sm text-green-700 mt-0.5">
-              {permitNumber && <>Permit Number: <strong>{permitNumber}</strong></>}
-              {permitData?.issue_date && <> • Issued: {format(new Date(permitData.issue_date), 'PPP')}</>}
-              {permitData?.expiry_date && <> • Expires: {format(new Date(permitData.expiry_date), 'PPP')}</>}
+              {permitNumber && <>{t('app_detail.permit_number_label')} <strong>{permitNumber}</strong></>}
+              {permitData?.issue_date && <> • {t('app_detail.issued_label')} {format(new Date(permitData.issue_date), 'PPP')}</>}
+              {permitData?.expiry_date && <> • {t('app_detail.expires_label')} {format(new Date(permitData.expiry_date), 'PPP')}</>}
             </p>
-            {loadingPermit && <p className="text-sm text-green-600 mt-1">Loading permit details...</p>}
+            {loadingPermit && <p className="text-sm text-green-600 mt-1">{t('app_detail.loading_permit')}</p>}
           </div>
         </div>
       )}
@@ -395,9 +397,9 @@ export const ApplicationDetailPage: React.FC = () => {
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
           <Edit3 className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
           <div>
-            <p className="font-semibold text-blue-800">This application is a Draft</p>
+            <p className="font-semibold text-blue-800">{t('app_detail.draft_notice_title')}</p>
             <p className="text-sm text-blue-700 mt-0.5">
-              You can edit your building details, upload missing documents, and add neighbour consents before submitting.
+              {t('app_detail.draft_notice_desc')}
             </p>
           </div>
         </div>
@@ -406,11 +408,11 @@ export const ApplicationDetailPage: React.FC = () => {
       {/* Tabs */}
       <div className="flex space-x-1 bg-slate-100 p-1 rounded-lg overflow-x-auto">
         {[
-          { key: 'details', label: 'Data', icon: Building },
-          { key: 'docs', label: 'Documents', icon: FileText },
-          { key: 'neighbors', label: 'Neighbors', icon: Users },
-          { key: 'timeline', label: 'Timeline', icon: Clock },
-          ...(app.status === 'REVISION_REQUIRED' ? [{ key: 'revision', label: 'Revisions', icon: MessageSquare }] : []),
+          { key: 'details', label: t('app_detail.tab_data'), icon: Building },
+          { key: 'docs', label: t('app_detail.tab_docs'), icon: FileText },
+          { key: 'neighbors', label: t('app_detail.tab_neighbors'), icon: Users },
+          { key: 'timeline', label: t('app_detail.tab_timeline'), icon: Clock },
+          ...(app.status === 'REVISION_REQUIRED' ? [{ key: 'revision', label: t('app_detail.tab_revisions'), icon: MessageSquare }] : []),
         ].map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -436,75 +438,75 @@ export const ApplicationDetailPage: React.FC = () => {
             {isDraft && !isEditingDetails && (
               <div className="flex justify-end mb-4">
                 <button onClick={handleStartEdit} className="btn btn-outline text-sm gap-2">
-                  <Edit3 className="w-4 h-4" /> Edit Details
+                  <Edit3 className="w-4 h-4" /> {t('app_detail.edit_details')}
                 </button>
               </div>
             )}
 
             {isEditingDetails ? (
               <form onSubmit={handleSubmit(handleSaveDetails)} className="space-y-6">
-                <h2 className="text-lg font-semibold text-slate-800 border-b pb-2">Edit Building Details</h2>
+                <h2 className="text-lg font-semibold text-slate-800 border-b pb-2">{t('app_detail.edit_building_title')}</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
-                    <label className="label">Intended Use</label>
+                    <label className="label">{t('app_detail.intended_use_label')}</label>
                     <input type="text" {...register('intended_use', { required: true })} className="input-field" />
-                    {errors.intended_use && <p className="text-red-500 text-xs mt-1">Required</p>}
+                    {errors.intended_use && <p className="text-red-500 text-xs mt-1">{t('app_detail.required_field')}</p>}
                   </div>
                   <div>
-                    <label className="label">Project Value (ETB)</label>
+                    <label className="label">{t('app_detail.project_value_label')}</label>
                     <input type="number" {...register('project_value_etb', { required: true, valueAsNumber: true })} className="input-field" />
                   </div>
                   <div>
-                    <label className="label">Height (m)</label>
+                    <label className="label">{t('app_detail.height_label')}</label>
                     <input type="number" step="0.1" {...register('height_m', { required: true, valueAsNumber: true })} className="input-field" />
                   </div>
                   <div>
-                    <label className="label">Floor Area (sqm)</label>
+                    <label className="label">{t('app_detail.floor_area_label')}</label>
                     <input type="number" step="0.1" {...register('floor_area_sqm', { valueAsNumber: true })} className="input-field" />
                   </div>
                   <div>
-                    <label className="label">Floors Above Ground</label>
+                    <label className="label">{t('app_detail.floors_above_label')}</label>
                     <input type="number" {...register('floors_above', { valueAsNumber: true })} className="input-field" />
                   </div>
                   <div>
-                    <label className="label">Floors Below Ground</label>
+                    <label className="label">{t('app_detail.floors_below_label')}</label>
                     <input type="number" {...register('floors_below', { valueAsNumber: true })} className="input-field" />
                   </div>
                   <div className="md:col-span-2 lg:col-span-3">
-                    <label className="label">Plot Address</label>
+                    <label className="label">{t('app_detail.plot_address_label')}</label>
                     <input type="text" {...register('plot_address')} className="input-field" />
                   </div>
                   <div>
-                    <label className="label">Subcity</label>
+                    <label className="label">{t('app_detail.subcity_label')}</label>
                     <input type="text" {...register('subcity_id')} className="input-field" />
                   </div>
                   <div>
-                    <label className="label">Woreda</label>
+                    <label className="label">{t('app_detail.woreda_label')}</label>
                     <input type="text" {...register('woreda')} className="input-field" />
                   </div>
                   <div>
-                    <label className="label">GPS Latitude</label>
+                    <label className="label">{t('app_detail.gps_lat_label')}</label>
                     <input type="number" step="0.000001" {...register('plot_gps_lat', { valueAsNumber: true })} className="input-field" />
                   </div>
                   <div>
-                    <label className="label">GPS Longitude</label>
+                    <label className="label">{t('app_detail.gps_lng_label')}</label>
                     <input type="number" step="0.000001" {...register('plot_gps_lng', { valueAsNumber: true })} className="input-field" />
                   </div>
                   <div>
-                    <label className="label">Architect Name</label>
+                    <label className="label">{t('app_detail.architect_name_label')}</label>
                     <input type="text" {...register('architect_name')} className="input-field" />
                   </div>
                   <div>
-                    <label className="label">Architect License</label>
+                    <label className="label">{t('app_detail.architect_license_label')}</label>
                     <input type="text" {...register('architect_license')} className="input-field" />
                   </div>
                   <div>
-                    <label className="label">Contractor Name</label>
+                    <label className="label">{t('app_detail.contractor_name_label')}</label>
                     <input type="text" {...register('contractor_name')} className="input-field" />
                   </div>
                   <div>
-                    <label className="label">Contractor License</label>
+                    <label className="label">{t('app_detail.contractor_license_label')}</label>
                     <input type="text" {...register('contractor_license')} className="input-field" />
                   </div>
                 </div>
@@ -512,25 +514,25 @@ export const ApplicationDetailPage: React.FC = () => {
                 <div className="flex gap-3 pt-2">
                   <button type="submit" disabled={savingDetails} className="btn btn-primary gap-2">
                     <Save className="w-4 h-4" />
-                    {savingDetails ? 'Saving...' : 'Save Changes'}
+                    {savingDetails ? t('app_detail.saving') : t('app_detail.save_changes')}
                   </button>
                   <button type="button" onClick={() => setIsEditingDetails(false)} className="btn btn-outline gap-2">
-                    <X className="w-4 h-4" /> Cancel
+                    <X className="w-4 h-4" /> {t('app_detail.cancel')}
                   </button>
                 </div>
               </form>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[
-                  ['Intended Use', app.intended_use],
-                  ['Category', app.building_category],
-                  ['Project Value', `${(app.project_value_etb || 0).toLocaleString()} ETB`],
-                  ['Address', app.plot_address],
-                  ['Subcity / Woreda', `${app.subcity_id} / ${app.woreda}`],
-                  ['Height / Area', `${app.height_m}m / ${app.floor_area_sqm} sqm`],
-                  ['Floors (Above / Below)', `${app.floors_above} / ${app.floors_below}`],
-                  ['Architect', `${app.architect_name} (${app.architect_license})`],
-                  ['Contractor', app.contractor_name || 'N/A'],
+                  [t('app_detail.detail_intended_use'), app.intended_use],
+                  [t('app_detail.detail_category'), app.building_category],
+                  [t('app_detail.detail_project_value'), `${(app.project_value_etb || 0).toLocaleString()} ETB`],
+                  [t('app_detail.detail_address'), app.plot_address],
+                  [t('app_detail.detail_subcity_woreda'), `${app.subcity_id} / ${app.woreda}`],
+                  [t('app_detail.detail_height_area'), `${app.height_m}m / ${app.floor_area_sqm} sqm`],
+                  [t('app_detail.detail_floors'), `${app.floors_above} / ${app.floors_below}`],
+                  [t('app_detail.detail_architect'), `${app.architect_name} (${app.architect_license})`],
+                  [t('app_detail.detail_contractor'), app.contractor_name || t('app_detail.no_file')],
                 ].map(([label, value]) => (
                   <div key={label}>
                     <p className="text-sm text-slate-500">{label}</p>
@@ -546,19 +548,19 @@ export const ApplicationDetailPage: React.FC = () => {
         {activeTab === 'docs' && (
           <div className="space-y-6">
             <div>
-              <h3 className="font-semibold text-slate-700 mb-3">Uploaded Documents</h3>
+              <h3 className="font-semibold text-slate-700 mb-3">{t('app_detail.uploaded_docs')}</h3>
               <DataTable data={app.documents || []} columns={docColumns} />
             </div>
 
             {isDraft && (
               <div>
                 <h3 className="font-semibold text-slate-700 mb-3 pt-4 border-t border-slate-100">
-                  Required Documents Checklist
+                  {t('app_detail.required_docs')}
                 </h3>
                 {loadingDocs ? (
                   <LoadingSpinner />
                 ) : requiredDocs.length === 0 ? (
-                  <p className="text-slate-500 italic text-sm">All required documents are uploaded.</p>
+                  <p className="text-slate-500 italic text-sm">{t('app_detail.all_docs_uploaded')}</p>
                 ) : (
                   <div className="space-y-4">
                     {requiredDocs.map((doc, idx) => (
@@ -567,11 +569,11 @@ export const ApplicationDetailPage: React.FC = () => {
                           <h4 className="font-medium text-slate-800">{doc.label || doc.document_type.replace(/_/g, ' ')}</h4>
                           {doc.uploaded ? (
                             <span className="flex items-center gap-1 bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full font-medium">
-                              <CheckCircle className="w-3 h-3" /> Uploaded
+                              <CheckCircle className="w-3 h-3" /> {t('app_detail.uploaded_badge')}
                             </span>
                           ) : (
                             <span className="bg-yellow-100 text-yellow-700 text-xs px-2 py-1 rounded-full font-medium">
-                              Required
+                              {t('app_detail.required_badge')}
                             </span>
                           )}
                         </div>
@@ -604,25 +606,25 @@ export const ApplicationDetailPage: React.FC = () => {
                     onClick={() => setShowAddNeighbor(true)}
                     className="btn btn-outline w-full py-3 border-dashed gap-2"
                   >
-                    <PlusCircle className="w-5 h-5" /> Add Neighbour Consent
+                    <PlusCircle className="w-5 h-5" /> {t('app_detail.add_neighbor')}
                   </button>
                 ) : (
                   <div className="bg-slate-50 rounded-xl border border-slate-200 p-6 space-y-4">
-                    <h3 className="font-semibold text-slate-800">New Neighbour Consent</h3>
+                    <h3 className="font-semibold text-slate-800">{t('app_detail.new_neighbor')}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="label">Neighbour Name</label>
+                        <label className="label">{t('app_detail.neighbor_name_field')}</label>
                         <input
                           type="text"
                           value={neighborForm.name}
                           onChange={(e) => setNeighborForm(p => ({ ...p, name: e.target.value }))}
                           className="input-field"
-                          placeholder="Full name"
+                          placeholder={t('app_detail.full_name_placeholder')}
                           required
                         />
                       </div>
                       <div>
-                        <label className="label">Phone Number</label>
+                        <label className="label">{t('app_detail.phone_field')}</label>
                         <input
                           type="text"
                           value={neighborForm.phone}
@@ -634,7 +636,7 @@ export const ApplicationDetailPage: React.FC = () => {
                       </div>
                     </div>
                     <div>
-                      <label className="label">Consent Document (PDF)</label>
+                      <label className="label">{t('app_detail.consent_doc_pdf')}</label>
                       <FileUploader
                         onUpload={(files) => setNeighborFile(files[0] ?? null)}
                         acceptedTypes={['application/pdf']}
@@ -642,7 +644,7 @@ export const ApplicationDetailPage: React.FC = () => {
                         label=""
                       />
                       {neighborFile && (
-                        <p className="text-xs text-green-600 mt-1">Selected: {neighborFile.name}</p>
+                        <p className="text-xs text-green-600 mt-1">{t('app_detail.selected_file')} {neighborFile.name}</p>
                       )}
                     </div>
                     <div className="flex gap-3 pt-2">
@@ -652,13 +654,13 @@ export const ApplicationDetailPage: React.FC = () => {
                         className="btn btn-primary gap-2"
                       >
                         <Save className="w-4 h-4" />
-                        {savingNeighbor ? 'Saving...' : 'Save Consent'}
+                        {savingNeighbor ? t('app_detail.saving') : t('app_detail.save_consent')}
                       </button>
                       <button
                         onClick={() => { setShowAddNeighbor(false); setNeighborForm({ name: '', phone: '' }); setNeighborFile(null); }}
                         className="btn btn-outline gap-2"
                       >
-                        <X className="w-4 h-4" /> Cancel
+                        <X className="w-4 h-4" /> {t('app_detail.cancel')}
                       </button>
                     </div>
                   </div>
@@ -675,18 +677,18 @@ export const ApplicationDetailPage: React.FC = () => {
               <div key={idx} className="relative pl-6">
                 <div className="absolute -left-[35px] top-1 w-4 h-4 rounded-full bg-primary ring-4 ring-white" />
                 <p className="text-sm text-slate-500 mb-1">
-                  {format(new Date(event.created_at), 'PPp')} by {event.actor_name}
+                  {format(new Date(event.created_at), 'PPp')} {t('app_detail.timeline_by')} {event.actor_name}
                 </p>
                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
                   <p className="font-medium text-slate-800">
-                    Status changed to <span className="text-primary">{event.new_status}</span>
+                    {t('app_detail.status_changed')} <span className="text-primary">{event.new_status}</span>
                   </p>
                   {event.note && <p className="text-sm text-slate-600 mt-2">{event.note}</p>}
                 </div>
               </div>
             ))}
             {!(app.timeline || app.history)?.length && (
-              <p className="text-slate-500 text-sm">No timeline events yet.</p>
+              <p className="text-slate-500 text-sm">{t('app_detail.no_events')}</p>
             )}
           </div>
         )}
@@ -697,8 +699,8 @@ export const ApplicationDetailPage: React.FC = () => {
             <div className="bg-red-50 border border-red-200 p-4 rounded-lg flex items-start gap-3">
               <AlertCircle className="w-6 h-6 text-red-500 mt-0.5" />
               <div>
-                <h3 className="text-red-700 font-bold">Revisions Required</h3>
-                <p className="text-red-600 text-sm mt-1">Please review the comments below and upload revised documents.</p>
+                <h3 className="text-red-700 font-bold">{t('app_detail.revisions_required')}</h3>
+                <p className="text-red-600 text-sm mt-1">{t('app_detail.revisions_desc')}</p>
               </div>
             </div>
             {(app.comments || []).filter((c: any) => c.resolution_status === 'OPEN').map((comment: any) => (
@@ -706,12 +708,12 @@ export const ApplicationDetailPage: React.FC = () => {
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <span className="bg-slate-100 text-slate-700 text-xs px-2 py-1 rounded font-medium mr-2">{comment.category}</span>
-                    <span className="text-sm text-slate-500">From {comment.author_name}</span>
+                    <span className="text-sm text-slate-500">{t('app_detail.from_label')} {comment.author_name}</span>
                   </div>
                 </div>
                 <p className="text-slate-800 mb-6">{comment.content}</p>
                 <div className="bg-slate-50 p-4 rounded-lg">
-                  <p className="text-sm font-medium mb-2">Upload Revision</p>
+                  <p className="text-sm font-medium mb-2">{t('app_detail.upload_revision')}</p>
                   <FileUploader
                     onUpload={(files) => handleRevisionUpload(files, 'ARCHITECTURAL')}
                     acceptedTypes={['application/pdf']}
@@ -721,7 +723,7 @@ export const ApplicationDetailPage: React.FC = () => {
               </div>
             ))}
             {!(app.comments || []).filter((c: any) => c.resolution_status === 'OPEN').length && (
-              <p className="text-slate-500 text-sm">No open revision requests.</p>
+              <p className="text-slate-500 text-sm">{t('app_detail.no_open_revisions')}</p>
             )}
           </div>
         )}

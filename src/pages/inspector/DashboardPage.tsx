@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { inspectionsApi } from '@/services/api/inspections';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { DataTable } from '@/components/tables/DataTable';
@@ -8,19 +9,21 @@ import { CalendarDays, MapPin, CheckCircle2, Clock, XCircle, List } from 'lucide
 import { format, differenceInHours, isPast, parseISO } from 'date-fns';
 
 const Countdown: React.FC<{ date: string }> = ({ date }) => {
+  const { t } = useTranslation();
   const [now, setNow] = useState(new Date());
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 60000);
-    return () => clearInterval(t);
+    const time = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(time);
   }, []);
   const hours = differenceInHours(parseISO(date), now);
-  if (hours <= 0) return <span className="text-red-600 font-semibold">Now / Overdue</span>;
-  if (hours < 24) return <span className="text-orange-600 font-semibold">In {hours}h</span>;
+  if (hours <= 0) return <span className="text-red-600 font-semibold">{t('inspector.now_overdue')}</span>;
+  if (hours < 24) return <span className="text-orange-600 font-semibold">{t('inspector.in_h', { hours })}</span>;
   const days = Math.floor(hours / 24);
-  return <span className="text-primary font-semibold">In {days}d</span>;
+  return <span className="text-primary font-semibold">{t('inspector.in_d', { days })}</span>;
 };
 
 export const InspectorDashboard: React.FC = () => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [schedule, setSchedule] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
@@ -58,16 +61,16 @@ export const InspectorDashboard: React.FC = () => {
 
   const upcomingColumns: ColumnDef<any>[] = [
     {
-      header: 'Type',
+      header: t('inspector.type'),
       cell: (i) => (
         <span className="px-2 py-1 rounded text-xs font-semibold bg-primary/10 text-primary">
           {i.inspection_type?.replace(/_/g, ' ')}
         </span>
       ),
     },
-    { header: 'ARN', cell: (i) => <span className="font-mono text-sm text-primary font-semibold">{i.application_arn || '—'}</span> },
+    { header: t('inspector.arn'), cell: (i) => <span className="font-mono text-sm text-primary font-semibold">{i.application_arn || '—'}</span> },
     {
-      header: 'Location',
+      header: t('inspector.location'),
       cell: (i) => (
         <span className="flex items-center gap-1 text-sm text-slate-600">
           <MapPin className="w-3.5 h-3.5 text-slate-400" />
@@ -76,17 +79,17 @@ export const InspectorDashboard: React.FC = () => {
       ),
     },
     {
-      header: 'Scheduled',
+      header: t('inspector.scheduled'),
       cell: (i) => i.scheduled_date
         ? format(parseISO(i.scheduled_date), 'EEE, MMM dd yyyy · HH:mm')
-        : 'TBD',
+        : t('inspector.tbd'),
     },
     {
-      header: 'Countdown',
+      header: t('inspector.countdown'),
       cell: (i) => i.scheduled_date ? <Countdown date={i.scheduled_date} /> : '—',
     },
     {
-      header: 'Status',
+      header: t('inspector.status'),
       cell: (i) => (
         <span className={`px-2 py-1 rounded text-xs font-medium ${
           i.status === 'SCHEDULED' ? 'bg-yellow-100 text-yellow-700' :
@@ -96,28 +99,28 @@ export const InspectorDashboard: React.FC = () => {
       ),
     },
     {
-      header: 'Action',
+      header: t('inspector.action'),
       cell: (i) => (
         <Link to={`/inspector/inspections/${i.inspection_id}`} className="btn btn-primary text-xs py-1.5 px-3">
-          Open
+          {t('inspector.open')}
         </Link>
       ),
     },
   ];
 
   const pastColumns: ColumnDef<any>[] = [
-    { header: 'Type', cell: (i) => <span className="text-sm font-medium">{i.inspection_type?.replace(/_/g, ' ')}</span> },
-    { header: 'ARN', cell: (i) => <span className="font-mono text-sm text-primary">{i.application_arn || '—'}</span> },
-    { header: 'Date', cell: (i) => i.scheduled_date ? format(parseISO(i.scheduled_date), 'MMM dd, yyyy') : '—' },
+    { header: t('inspector.type'), cell: (i) => <span className="text-sm font-medium">{i.inspection_type?.replace(/_/g, ' ')}</span> },
+    { header: t('inspector.arn'), cell: (i) => <span className="font-mono text-sm text-primary">{i.application_arn || '—'}</span> },
+    { header: t('inspector.date'), cell: (i) => i.scheduled_date ? format(parseISO(i.scheduled_date), 'MMM dd, yyyy') : '—' },
     {
-      header: 'Outcome',
+      header: t('inspector.outcome'),
       cell: (i) => (
         <span className={`flex items-center gap-1 font-semibold text-sm ${
           i.overall_result === 'PASSED' ? 'text-green-600' : 'text-red-600'
         }`}>
           {i.overall_result === 'PASSED'
-            ? <><CheckCircle2 className="w-4 h-4" /> Passed</>
-            : <><XCircle className="w-4 h-4" /> Failed</>}
+            ? <><CheckCircle2 className="w-4 h-4" /> {t('inspector.passed')}</>
+            : <><XCircle className="w-4 h-4" /> {t('inspector.failed')}</>}
         </span>
       ),
     },
@@ -125,7 +128,7 @@ export const InspectorDashboard: React.FC = () => {
       header: '',
       cell: (i) => (
         <Link to={`/inspector/inspections/${i.inspection_id}`} className="text-primary hover:underline text-sm">
-          View Report
+          {t('inspector.view_report')}
         </Link>
       ),
     },
@@ -135,16 +138,16 @@ export const InspectorDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-primary">Site Inspector Dashboard</h1>
+      <h1 className="text-2xl font-bold text-primary">{t('inspector.dashboard_title')}</h1>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
         <div className="card p-5 border-l-4 border-yellow-400">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Today</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('inspector.today')}</p>
               <h3 className="text-3xl font-bold text-slate-800 mt-1">{todayCount}</h3>
-              <p className="text-xs text-slate-400 mt-1">scheduled today</p>
+              <p className="text-xs text-slate-400 mt-1">{t('inspector.scheduled_today')}</p>
             </div>
             <div className="p-2.5 bg-yellow-100 text-yellow-600 rounded-xl"><CalendarDays className="w-5 h-5" /></div>
           </div>
@@ -152,9 +155,9 @@ export const InspectorDashboard: React.FC = () => {
         <div className="card p-5 border-l-4 border-primary">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Upcoming</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('inspector.upcoming')}</p>
               <h3 className="text-3xl font-bold text-slate-800 mt-1">{upcoming.length}</h3>
-              <p className="text-xs text-slate-400 mt-1">pending inspections</p>
+              <p className="text-xs text-slate-400 mt-1">{t('inspector.pending_inspections')}</p>
             </div>
             <div className="p-2.5 bg-primary/10 text-primary rounded-xl"><Clock className="w-5 h-5" /></div>
           </div>
@@ -162,9 +165,9 @@ export const InspectorDashboard: React.FC = () => {
         <div className="card p-5 border-l-4 border-green-500">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Passed</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('inspector.passed')}</p>
               <h3 className="text-3xl font-bold text-green-700 mt-1">{passedCount}</h3>
-              <p className="text-xs text-slate-400 mt-1">total passed</p>
+              <p className="text-xs text-slate-400 mt-1">{t('inspector.total_passed')}</p>
             </div>
             <div className="p-2.5 bg-green-100 text-green-600 rounded-xl"><CheckCircle2 className="w-5 h-5" /></div>
           </div>
@@ -172,9 +175,9 @@ export const InspectorDashboard: React.FC = () => {
         <div className="card p-5 border-l-4 border-red-500">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Failed</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('inspector.failed')}</p>
               <h3 className="text-3xl font-bold text-red-600 mt-1">{failedCount}</h3>
-              <p className="text-xs text-slate-400 mt-1">total failed</p>
+              <p className="text-xs text-slate-400 mt-1">{t('inspector.total_failed')}</p>
             </div>
             <div className="p-2.5 bg-red-100 text-red-600 rounded-xl"><XCircle className="w-5 h-5" /></div>
           </div>
@@ -190,7 +193,7 @@ export const InspectorDashboard: React.FC = () => {
                 <CalendarDays className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-xs text-primary font-semibold uppercase tracking-wider">Next Inspection</p>
+                <p className="text-xs text-primary font-semibold uppercase tracking-wider">{t('inspector.next_inspection')}</p>
                 <p className="font-bold text-slate-800 text-lg mt-0.5">
                   {nextInspection.inspection_type?.replace(/_/g, ' ')} — {nextInspection.application_arn}
                 </p>
@@ -209,7 +212,7 @@ export const InspectorDashboard: React.FC = () => {
                 to={`/inspector/inspections/${nextInspection.inspection_id}`}
                 className="btn btn-primary text-sm mt-2"
               >
-                Open Workspace
+                {t('inspector.open_workspace')}
               </Link>
             </div>
           </div>
@@ -225,7 +228,7 @@ export const InspectorDashboard: React.FC = () => {
               activeTab === 'upcoming' ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-primary'
             }`}
           >
-            <Clock className="w-4 h-4" /> Upcoming ({upcoming.length})
+            <Clock className="w-4 h-4" /> {t('inspector.upcoming')} ({upcoming.length})
           </button>
           <button
             onClick={() => setActiveTab('past')}
@@ -233,7 +236,7 @@ export const InspectorDashboard: React.FC = () => {
               activeTab === 'past' ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-primary'
             }`}
           >
-            <List className="w-4 h-4" /> Past ({past.length})
+            <List className="w-4 h-4" /> {t('inspector.past')} ({past.length})
           </button>
         </div>
         {activeTab === 'upcoming'

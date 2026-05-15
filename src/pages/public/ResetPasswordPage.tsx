@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -18,6 +19,7 @@ const resetPasswordSchema = z.object({
 type ResetPasswordValues = z.infer<typeof resetPasswordSchema>;
 
 export const ResetPasswordPage: React.FC = () => {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const uid = searchParams.get('uid');
   const token = searchParams.get('token');
@@ -58,12 +60,12 @@ export const ResetPasswordPage: React.FC = () => {
     return (
       <div className="min-h-[calc(100vh-140px)] flex items-center justify-center p-4">
         <div className="bg-white max-w-md w-full p-8 rounded-2xl shadow-xl text-center">
-          <h2 className="text-2xl font-bold text-danger mb-4">Invalid Link</h2>
+          <h2 className="text-2xl font-bold text-danger mb-4">{t('auth.invalid_link_title')}</h2>
           <p className="text-slate-600 mb-6">
-            The password reset link is invalid or has expired. Please request a new one.
+            {t('auth.invalid_link_desc')}
           </p>
           <Link to="/forgot-password" className="btn btn-primary w-full">
-            Request New Link
+            {t('auth.request_new_link')}
           </Link>
         </div>
       </div>
@@ -74,15 +76,15 @@ export const ResetPasswordPage: React.FC = () => {
     <div className="min-h-[calc(100vh-140px)] flex items-center justify-center p-4">
       <div className="bg-white max-w-md w-full rounded-2xl shadow-xl overflow-hidden border border-slate-100 p-8">
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-slate-800">Set New Password</h2>
+          <h2 className="text-2xl font-bold text-slate-800">{t('auth.reset_title')}</h2>
           <p className="text-slate-500 mt-2">
-            Please enter your new password below.
+            {t('auth.reset_subtitle')}
           </p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div>
-            <label className="label">New Password</label>
+            <label className="label">{t('auth.new_password_label')}</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Lock className="h-5 w-5 text-slate-400" />
@@ -91,14 +93,14 @@ export const ResetPasswordPage: React.FC = () => {
                 type="password"
                 {...register('new_password')}
                 className={`input-field pl-10 ${errors.new_password ? 'border-danger focus:ring-danger' : ''}`}
-                placeholder="••••••••"
+                placeholder={t('auth.password_placeholder')}
               />
             </div>
             {errors.new_password && <p className="text-danger text-xs mt-1">{errors.new_password.message}</p>}
           </div>
 
           <div>
-            <label className="label">Confirm Password</label>
+            <label className="label">{t('auth.confirm_password_label')}</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Lock className="h-5 w-5 text-slate-400" />
@@ -107,7 +109,7 @@ export const ResetPasswordPage: React.FC = () => {
                 type="password"
                 {...register('confirm_password')}
                 className={`input-field pl-10 ${errors.confirm_password ? 'border-danger focus:ring-danger' : ''}`}
-                placeholder="••••••••"
+                placeholder={t('auth.password_placeholder')}
               />
             </div>
             {errors.confirm_password && <p className="text-danger text-xs mt-1">{errors.confirm_password.message}</p>}
@@ -118,9 +120,9 @@ export const ResetPasswordPage: React.FC = () => {
             disabled={isLoading}
             className="w-full btn btn-primary py-3 inline-flex items-center justify-center"
           >
-            {isLoading ? 'Resetting...' : (
+            {isLoading ? t('auth.resetting') : (
               <>
-                Reset Password
+                {t('auth.reset_password')}
                 <ArrowRight className="w-4 h-4 ml-2" />
               </>
             )}

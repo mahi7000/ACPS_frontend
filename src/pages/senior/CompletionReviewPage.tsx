@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { approvalsApi } from '@/services/api/approvals';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import {
@@ -10,6 +11,7 @@ import toast from 'react-hot-toast';
 import { format, parseISO } from 'date-fns';
 
 export const CompletionReviewPage: React.FC = () => {
+  const { t } = useTranslation();
   const { applicationId } = useParams<{ applicationId: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -74,11 +76,11 @@ export const CompletionReviewPage: React.FC = () => {
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-slate-800">Completion Certificate Review</h1>
+          <h1 className="text-2xl font-bold text-slate-800">{t('senior.completion_review')}</h1>
           <p className="text-slate-500 text-sm mt-1">
             ARN: <strong>{reviewData.application_arn}</strong> ·
-            Inspector: <strong>{inspection.inspector_name || 'N/A'}</strong>
-            {inspection.completed_at && ` · Completed ${format(parseISO(inspection.completed_at), 'MMM dd, yyyy')}`}
+            {t('senior.inspector')} <strong>{inspection.inspector_name || t('senior.na')}</strong>
+            {inspection.completed_at && ` · ${t('senior.completed_on')} ${format(parseISO(inspection.completed_at), 'MMM dd, yyyy')}`}
           </p>
         </div>
         <div className="flex gap-3">
@@ -86,14 +88,14 @@ export const CompletionReviewPage: React.FC = () => {
             onClick={() => setShowRejectModal(true)}
             className="btn btn-outline text-danger border-danger hover:bg-danger/10 gap-2"
           >
-            <XCircle className="w-4 h-4" /> Reject
+            <XCircle className="w-4 h-4" /> {t('senior.reject')}
           </button>
           <button
             onClick={handleIssueCertificate}
             disabled={submitting}
             className="btn bg-green-600 hover:bg-green-700 text-white font-medium rounded-xl gap-2"
           >
-            <CheckCircle className="w-4 h-4" /> Issue Certificate
+            <CheckCircle className="w-4 h-4" /> {t('senior.issue_cert')}
           </button>
         </div>
       </div>
@@ -109,18 +111,18 @@ export const CompletionReviewPage: React.FC = () => {
           : <AlertTriangle className="w-6 h-6 text-red-600 shrink-0 mt-0.5" />}
         <div>
           <h3 className={`font-bold ${inspection.overall_result === 'PASSED' ? 'text-green-800' : 'text-red-800'}`}>
-            Final Inspection — {inspection.overall_result || 'Result Pending'}
+            {t('senior.final_inspection')} {inspection.overall_result || t('senior.result_pending')}
           </h3>
           <p className={`text-sm mt-0.5 ${inspection.overall_result === 'PASSED' ? 'text-green-700' : 'text-red-700'}`}>
             {inspection.overall_result === 'PASSED'
-              ? 'The site inspector has verified the building construction matches the approved plans and meets all requirements.'
-              : inspection.failure_summary || 'See failure details below.'}
+              ? t('senior.pass_desc')
+              : inspection.failure_summary || t('senior.fail_desc')}
           </p>
           <div className="flex gap-4 mt-2 text-xs font-semibold">
-            <span className="text-green-700">✓ {passed} Pass</span>
-            <span className="text-red-600">✗ {failed} Fail</span>
-            <span className="text-slate-500">— {naItems} N/A</span>
-            <span className="text-slate-500">{checklistItems.length} total items</span>
+            <span className="text-green-700">✓ {passed} {t('senior.pass')}</span>
+            <span className="text-red-600">✗ {failed} {t('senior.fail')}</span>
+            <span className="text-slate-500">— {naItems} {t('senior.na')}</span>
+            <span className="text-slate-500">{checklistItems.length} {t('senior.total_items')}</span>
           </div>
         </div>
       </div>
@@ -130,11 +132,11 @@ export const CompletionReviewPage: React.FC = () => {
         {/* Left: Approved plans */}
         <div className="card p-5">
           <h2 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <FileText className="w-5 h-5 text-primary" /> Approved Plans &amp; Documents
+            <FileText className="w-5 h-5 text-primary" /> {t('senior.approved_plans')}
           </h2>
           <div className="space-y-3">
             {approvedDocs.length === 0 && (
-              <p className="text-slate-400 text-sm italic">No approved documents found.</p>
+              <p className="text-slate-400 text-sm italic">{t('senior.no_approved_docs')}</p>
             )}
             {approvedDocs.map((doc: any, i: number) => (
               <div key={i} className="flex items-center justify-between bg-slate-50 rounded-lg p-3 border border-slate-200">
@@ -158,12 +160,12 @@ export const CompletionReviewPage: React.FC = () => {
         {/* Right: Site photos */}
         <div className="card p-5">
           <h2 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <Camera className="w-5 h-5 text-primary" /> Completion Site Photos ({photos.length})
+            <Camera className="w-5 h-5 text-primary" /> {t('senior.site_photos')} ({photos.length})
           </h2>
           {photos.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 bg-slate-50 rounded-xl border border-slate-200 border-dashed text-slate-400">
               <Camera className="w-8 h-8 mb-2 opacity-40" />
-              <p className="text-sm">No photos uploaded by inspector</p>
+              <p className="text-sm">{t('senior.no_photos')}</p>
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-3">
@@ -179,7 +181,7 @@ export const CompletionReviewPage: React.FC = () => {
                   <div className="absolute inset-x-0 bottom-0 bg-black/50 px-2 py-1 text-[9px] text-white">
                     {p.gps_lat
                       ? `${Number(p.gps_lat).toFixed(4)}, ${Number(p.gps_lng).toFixed(4)}`
-                      : p.timestamp ? format(parseISO(p.timestamp), 'MMM dd, HH:mm') : 'GPS Tagged'}
+                      : p.timestamp ? format(parseISO(p.timestamp), 'MMM dd, HH:mm') : t('senior.gps_tagged')}
                   </div>
                 </div>
               ))}
@@ -191,7 +193,7 @@ export const CompletionReviewPage: React.FC = () => {
       {/* Checklist Summary */}
       {checklistItems.length > 0 && (
         <div className="card p-6">
-          <h2 className="text-base font-bold text-slate-800 mb-4">Inspection Checklist Results</h2>
+          <h2 className="text-base font-bold text-slate-800 mb-4">{t('senior.checklist_results')}</h2>
           <div className="space-y-2">
             {checklistItems.map((item: any, idx: number) => (
               <div
@@ -221,27 +223,25 @@ export const CompletionReviewPage: React.FC = () => {
       {showRejectModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
-            <h2 className="text-xl font-bold text-slate-800 mb-1">Reject Completion?</h2>
-            <p className="text-sm text-slate-500 mb-4">
-              The applicant and inspector will be notified. A re-inspection may be required.
-            </p>
+            <h2 className="text-xl font-bold text-slate-800 mb-1">{t('senior.reject_completion_q')}</h2>
+            <p className="text-sm text-slate-500 mb-4">{t('senior.reject_completion_desc')}</p>
             <div>
-              <label className="label">Reason for Rejection <span className="text-red-500">*</span></label>
+              <label className="label">{t('senior.reason_rejection')} <span className="text-red-500">*</span></label>
               <textarea
                 value={rejectReason}
                 onChange={e => setRejectReason(e.target.value)}
                 rows={4}
-                placeholder="Describe what did not pass final review..."
+                placeholder={t('senior.reason_placeholder')}
                 className="input-field"
               />
               <p className={`text-xs mt-1 ${rejectReason.length < 20 ? 'text-orange-500' : 'text-green-600'}`}>
-                {rejectReason.length}/20 characters minimum
+                {rejectReason.length}/20 {t('senior.chars_min')}
               </p>
             </div>
             <div className="flex gap-3 mt-5">
-              <button onClick={() => setShowRejectModal(false)} className="btn btn-outline flex-1">Cancel</button>
+              <button onClick={() => setShowRejectModal(false)} className="btn btn-outline flex-1">{t('senior.cancel')}</button>
               <button onClick={handleRejectCompletion} disabled={submitting} className="btn flex-1 bg-red-600 text-white hover:bg-red-700 font-medium rounded-xl py-2.5">
-                {submitting ? 'Rejecting...' : 'Confirm Rejection'}
+                {submitting ? t('senior.rejecting') : t('senior.confirm_rejection')}
               </button>
             </div>
           </div>

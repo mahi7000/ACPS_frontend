@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { paymentsApi } from '@/services/api/payments';
 import { applicationsApi } from '@/services/api/applications';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -8,6 +9,7 @@ import { CheckCircle, CreditCard, Building2, Smartphone } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const PaymentPage: React.FC = () => {
+  const { t } = useTranslation();
   const { applicationId } = useParams<{ applicationId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -169,55 +171,55 @@ export const PaymentPage: React.FC = () => {
   if (loading) return <LoadingSpinner fullPage />;
   if (!invoice) return (
     <div className="text-center py-8">
-      <p className="text-lg text-slate-600">Invoice not found.</p>
+      <p className="text-lg text-slate-600">{t('payment.not_found')}</p>
       <button
         onClick={() => navigate('/applicant/dashboard')}
         className="btn btn-primary mt-4"
       >
-        Go to Dashboard
+        {t('payment.go_to_dashboard')}
       </button>
     </div>
   );
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold text-primary mb-8">Pay Application Fee</h1>
+      <h1 className="text-2xl font-bold text-primary mb-8">{t('payment.title')}</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="card p-6">
-          <h2 className="text-lg font-bold text-slate-800 border-b pb-4 mb-4">Invoice Summary</h2>
+          <h2 className="text-lg font-bold text-slate-800 border-b pb-4 mb-4">{t('payment.invoice_summary')}</h2>
           <div className="space-y-4">
             <div className="flex justify-between">
-              <span className="text-slate-500">Application ARN</span>
+              <span className="text-slate-500">{t('payment.app_arn')}</span>
               <span className="font-medium text-slate-800">{invoice.application_arn || 'N/A'}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Invoice ID</span>
+              <span className="text-slate-500">{t('payment.invoice_id')}</span>
               <span className="font-medium text-slate-800">{invoice.invoice_id}</span>
             </div>
 
             <div className="bg-highlight/10 border border-highlight rounded-lg p-4 mt-6">
-              <h3 className="font-semibold text-slate-800 mb-3">Fee Breakdown</h3>
+              <h3 className="font-semibold text-slate-800 mb-3">{t('payment.fee_breakdown')}</h3>
               <div className="space-y-2 text-sm">
                 {invoice.fee_breakdown ? (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-slate-600">{invoice.fee_breakdown.base_description || 'Base Fee'}</span>
+                      <span className="text-slate-600">{invoice.fee_breakdown.base_description || t('payment.base_fee')}</span>
                       <span>{(invoice.fee_breakdown.base_fee || 0).toLocaleString()} ETB</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-600">{invoice.fee_breakdown.fixed_description || 'Fixed Fee'}</span>
+                      <span className="text-slate-600">{invoice.fee_breakdown.fixed_description || t('payment.fixed_fee')}</span>
                       <span>{(invoice.fee_breakdown.fixed_fee || 0).toLocaleString()} ETB</span>
                     </div>
                   </>
                 ) : (
                   <div className="flex justify-between">
-                    <span className="text-slate-600">Total Fee</span>
+                    <span className="text-slate-600">{t('payment.total_fee')}</span>
                     <span>{(invoice.amount_etb || 0).toLocaleString()} ETB</span>
                   </div>
                 )}
                 <div className="border-t border-highlight/30 pt-2 mt-2 flex justify-between font-bold text-lg text-primary">
-                  <span>Total Amount</span>
+                  <span>{t('payment.total_amount')}</span>
                   <span>{(invoice.amount_etb || 0).toLocaleString()} ETB</span>
                 </div>
               </div>
@@ -226,7 +228,7 @@ export const PaymentPage: React.FC = () => {
         </div>
 
         <div className="card p-6">
-          <h2 className="text-lg font-bold text-slate-800 border-b pb-4 mb-4">Select Payment Method</h2>
+          <h2 className="text-lg font-bold text-slate-800 border-b pb-4 mb-4">{t('payment.select_method')}</h2>
 
           <div className="space-y-4">
             {(invoice.available_methods || ['TELEBIRR', 'CBEBIRR', 'BANK_TRANSFER']).includes('TELEBIRR') && (
@@ -238,7 +240,7 @@ export const PaymentPage: React.FC = () => {
                   <Smartphone className="w-6 h-6 text-primary mr-3" />
                   <div className="flex-1">
                     <h3 className="font-semibold text-slate-800">Telebirr</h3>
-                    <p className="text-sm text-slate-500">Pay directly using Telebirr app</p>
+                    <p className="text-sm text-slate-500">{t('payment.pay_telebirr')}</p>
                   </div>
                   {selectedMethod === 'TELEBIRR' && <CheckCircle className="w-5 h-5 text-primary" />}
                 </div>
@@ -254,7 +256,7 @@ export const PaymentPage: React.FC = () => {
                   <Smartphone className="w-6 h-6 text-primary mr-3" />
                   <div className="flex-1">
                     <h3 className="font-semibold text-slate-800">CBE Birr</h3>
-                    <p className="text-sm text-slate-500">Pay via CBE mobile banking</p>
+                    <p className="text-sm text-slate-500">{t('payment.pay_cbe')}</p>
                   </div>
                   {selectedMethod === 'CBEBIRR' && <CheckCircle className="w-5 h-5 text-primary" />}
                 </div>
@@ -270,7 +272,7 @@ export const PaymentPage: React.FC = () => {
                   <Building2 className="w-6 h-6 text-primary mr-3" />
                   <div className="flex-1">
                     <h3 className="font-semibold text-slate-800">Bank Transfer</h3>
-                    <p className="text-sm text-slate-500">Upload deposit slip manually</p>
+                    <p className="text-sm text-slate-500">{t('payment.upload_manual')}</p>
                   </div>
                   {selectedMethod === 'BANK_TRANSFER' && <CheckCircle className="w-5 h-5 text-primary" />}
                 </div>
@@ -286,34 +288,34 @@ export const PaymentPage: React.FC = () => {
                 className="w-full btn btn-primary py-3 flex items-center justify-center"
               >
                 {processing ? <LoadingSpinner size="sm" className="mr-2 text-white" /> : <CreditCard className="w-5 h-5 mr-2" />}
-                {processing ? 'Processing Payment...' : 'Pay Now'}
+                {processing ? t('payment.processing') : t('payment.pay_now')}
               </button>
             )}
 
             {selectedMethod === 'BANK_TRANSFER' && bankDetails && (
               <div className="space-y-4 animate-fadeIn">
                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 text-sm">
-                  <p className="font-semibold mb-2">Bank Details:</p>
-                  <p>Bank: {bankDetails.bank_name || 'Commercial Bank of Ethiopia'}</p>
-                  <p>Account: {bankDetails.account_number || '1000123456789'}</p>
-                  <p>Account Name: {bankDetails.account_name || 'ACPS Admin Office'}</p>
-                  <p>Branch: {bankDetails.branch || 'Addis Ababa Main'}</p>
-                  <p className="text-danger mt-2">Reference: {bankDetails.reference_note || invoice.application_arn}</p>
+                  <p className="font-semibold mb-2">{t('payment.bank_details')}</p>
+                  <p>{t('payment.bank')} {bankDetails.bank_name || 'Commercial Bank of Ethiopia'}</p>
+                  <p>{t('payment.account')} {bankDetails.account_number || '1000123456789'}</p>
+                  <p>{t('payment.account_name')} {bankDetails.account_name || 'ACPS Admin Office'}</p>
+                  <p>{t('payment.branch')} {bankDetails.branch || 'Addis Ababa Main'}</p>
+                  <p className="text-danger mt-2">{t('payment.reference')} {bankDetails.reference_note || invoice.application_arn}</p>
                 </div>
                 <FileUploader
                   onUpload={handleBankReceiptUpload}
                   acceptedTypes={['application/pdf', 'image/jpeg', 'image/png']}
                   maxSizeMB={5}
-                  label="Upload Deposit Slip"
+                  label={t('payment.upload_receipt')}
                 />
-                {processing && <p className="text-center text-sm text-primary animate-pulse">Uploading receipt...</p>}
+                {processing && <p className="text-center text-sm text-primary animate-pulse">{t('payment.uploading_receipt')}</p>}
               </div>
             )}
 
             {selectedMethod === 'BANK_TRANSFER' && !bankDetails && processing && (
               <div className="text-center py-4">
                 <LoadingSpinner size="sm" />
-                <p className="text-sm text-slate-500 mt-2">Getting bank details...</p>
+                <p className="text-sm text-slate-500 mt-2">{t('payment.getting_bank')}</p>
               </div>
             )}
           </div>

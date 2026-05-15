@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { CheckCircle2, XCircle, ArrowLeft, Calendar, FileText } from 'lucide-react';
 import { apiClient } from '@/services/api/client';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 
 export const VerifyPermitPage: React.FC = () => {
+  const { t } = useTranslation();
   const { permitNumber: initialPermitNumber } = useParams<{ permitNumber: string }>();
   const [searchInput, setSearchInput] = useState(initialPermitNumber || '');
   const [permitNumber, setPermitNumber] = useState(initialPermitNumber || '');
@@ -45,26 +47,26 @@ export const VerifyPermitPage: React.FC = () => {
       <div className="max-w-lg w-full">
         <Link to="/" className="inline-flex items-center text-primary hover:text-primary/80 mb-6 font-medium">
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Home
+          {t('verify.back_home')}
         </Link>
 
         <div className="card p-8 mb-6 border border-slate-200 shadow-sm">
           <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-slate-800">Verify Permit</h1>
-            <p className="text-sm text-slate-500 mt-2">Enter a permit number to check its current validity and details.</p>
+            <h1 className="text-2xl font-bold text-slate-800">{t('verify.title')}</h1>
+            <p className="text-sm text-slate-500 mt-2">{t('verify.subtitle')}</p>
           </div>
           
           <form onSubmit={handleSearch} className="flex flex-col gap-4">
             <input 
               type="text" 
-              placeholder="e.g. CP-2026-000001" 
+              placeholder={t('verify.placeholder')} 
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="input-field py-3"
               required
             />
             <button type="submit" className="btn btn-primary py-3">
-              Search Permit
+              {t('verify.search')}
             </button>
           </form>
         </div>
@@ -72,14 +74,14 @@ export const VerifyPermitPage: React.FC = () => {
         {loading ? (
           <div className="card p-12 text-center border border-slate-200">
             <LoadingSpinner size="lg" />
-            <p className="mt-4 text-slate-500">Verifying permit {permitNumber}...</p>
+            <p className="mt-4 text-slate-500">{t('verify.verifying')} {permitNumber}...</p>
           </div>
         ) : error ? (
           <div className="card border-danger/50 p-8 text-center shadow-sm">
             <div className="w-20 h-20 bg-danger/10 text-danger rounded-full flex items-center justify-center mx-auto mb-6">
               <XCircle className="w-10 h-10" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-800 mb-2">Permit Not Found</h2>
+            <h2 className="text-2xl font-bold text-slate-800 mb-2">{t('verify.not_found')}</h2>
             <p className="text-slate-600">{error}</p>
           </div>
         ) : permitData ? (
@@ -109,8 +111,8 @@ export const VerifyPermitPage: React.FC = () => {
               <div className="flex items-center">
                 <Calendar className="w-5 h-5 text-primary mr-4" />
                 <div>
-                  <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">Issue Date</p>
-                  <p className="text-slate-800 font-medium">{permitData.issue_date || 'N/A'}</p>
+                  <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">{t('verify.issue_date')}</p>
+                  <p className="text-slate-800 font-medium">{permitData.issue_date || t('verify.na')}</p>
                 </div>
               </div>
               
@@ -119,8 +121,8 @@ export const VerifyPermitPage: React.FC = () => {
               <div className="flex items-center">
                 <FileText className="w-5 h-5 text-primary mr-4" />
                 <div>
-                  <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">Expiry Date</p>
-                  <p className="text-slate-800 font-medium">{permitData.expiry_date || 'N/A'}</p>
+                  <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">{t('verify.expiry_date')}</p>
+                  <p className="text-slate-800 font-medium">{permitData.expiry_date || t('verify.na')}</p>
                 </div>
               </div>
             </div>

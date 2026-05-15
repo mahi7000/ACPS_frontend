@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Search,
   Building,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 
 export const LandingPage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [permitNumber, setPermitNumber] = useState('');
 
@@ -29,47 +31,47 @@ export const LandingPage: React.FC = () => {
   };
 
   const stats = [
-    { label: 'Permits Processed', value: '12,450+', icon: FileText },
-    { label: 'Active Users', value: '8,200+', icon: Users },
-    { label: 'Cities Covered', value: '45+', icon: MapPin },
-    { label: 'Avg. Processing', value: '3 Days', icon: Clock },
+    { label: t('landing.stats_processed'), value: '12,450+', icon: FileText },
+    { label: t('landing.stats_users'), value: '8,200+', icon: Users },
+    { label: t('landing.stats_cities'), value: '45+', icon: MapPin },
+    { label: t('landing.stats_avg_time'), value: '3 Days', icon: Clock },
   ];
 
   const features = [
     {
       icon: Clock,
-      title: 'Faster Processing',
-      description: 'Apply online and get your permits approved in days instead of weeks with automated workflows and real-time tracking.',
+      title: t('landing.feature_1_title'),
+      description: t('landing.feature_1_desc'),
       benefits: ['24/7 online submission', 'Automated document verification', 'Instant status updates']
     },
     {
       icon: ShieldCheck,
-      title: 'Secure Document Vault',
-      description: 'Your documents are securely stored with enterprise-grade encryption and verified in your personal digital vault.',
+      title: t('landing.feature_2_title'),
+      description: t('landing.feature_2_desc'),
       benefits: ['End-to-end encryption', 'Blockchain verification', 'Permanent record keeping']
     },
     {
       icon: FileText,
-      title: 'Transparent Review Process',
-      description: 'Track your application status in real-time and communicate directly with review officers throughout the process.',
+      title: t('landing.feature_3_title'),
+      description: t('landing.feature_3_desc'),
       benefits: ['Live status dashboard', 'Direct messaging system', 'Complete audit trail']
     },
     {
       icon: Building,
-      title: 'Digital Site Inspections',
-      description: 'Site inspections conducted digitally with GPS-tagged photos, timestamps, and full accountability.',
+      title: t('landing.feature_4_title'),
+      description: t('landing.feature_4_desc'),
       benefits: ['GPS-verified locations', 'Photo documentation', 'Instant inspection reports']
     },
     {
       icon: Globe,
-      title: 'Nationwide Coverage',
-      description: 'Our platform serves all major cities and regions across Ethiopia with consistent standards and processing.',
+      title: t('landing.feature_5_title'),
+      description: t('landing.feature_5_desc'),
       benefits: ['45+ cities covered', 'Uniform standards', 'Local office integration']
     },
     {
       icon: Smartphone,
-      title: 'Mobile Ready',
-      description: 'Access your permits, track applications, and receive notifications on any device, anywhere in the field.',
+      title: t('landing.feature_6_title'),
+      description: t('landing.feature_6_desc'),
       benefits: ['Responsive design', 'Push notifications', 'Offline document access']
     },
   ];
@@ -105,16 +107,16 @@ export const LandingPage: React.FC = () => {
         <div className="container mx-auto max-w-3xl text-center">
           <div className="inline-flex items-center gap-2 bg-highlight/10 rounded-full px-4 py-2 mb-8">
             <Zap className="w-4 h-4 text-highlight" />
-            <span className="text-xs font-medium text-primary">Ethiopia's Leading Digital Permit Platform</span>
+            <span className="text-xs font-medium text-primary">{t('landing.hero_badge')}</span>
           </div>
 
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-primary leading-tight mb-6 tracking-tight">
-            Construction permits,{' '}
-            <span className="text-highlight">simplified</span>
+            {t('landing.hero_title')}{' '}
+            <span className="text-highlight">{t('landing.hero_highlight')}</span>
           </h1>
 
           <p className="text-lg text-slate-500 mb-12 max-w-xl mx-auto leading-relaxed">
-            Fast, transparent, and secure permit processing for Ethiopia's construction industry. From application to approval in record time.
+            {t('landing.hero_desc')}
           </p>
 
           <div className="flex flex-col sm:flex-row justify-center items-center gap-3 mb-16">
@@ -122,14 +124,14 @@ export const LandingPage: React.FC = () => {
               to="/register"
               className="bg-primary text-white hover:bg-primary-light font-medium text-sm px-6 py-3 rounded-xl transition-colors duration-200 inline-flex items-center gap-2"
             >
-              Get started
+              {t('landing.get_started')}
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
               to="/login"
               className="text-slate-500 hover:text-primary font-medium text-sm px-6 py-3 rounded-xl transition-colors duration-200 border border-slate-200 hover:border-primary"
             >
-              Sign in
+              {t('landing.sign_in')}
             </Link>
           </div>
 
@@ -138,7 +140,7 @@ export const LandingPage: React.FC = () => {
             <div className="relative flex items-center">
               <input
                 type="text"
-                placeholder="Verify a permit number (e.g., CP-2026-000001)"
+                placeholder={t('landing.verify_placeholder')}
                 className="w-full pl-5 pr-12 py-3.5 rounded-xl border border-slate-200 text-slate-700 bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 text-sm"
                 value={permitNumber}
                 onChange={(e) => setPermitNumber(e.target.value)}
@@ -152,7 +154,7 @@ export const LandingPage: React.FC = () => {
             </div>
             <p className="text-xs text-slate-400 mt-3">
               <CheckCircle2 className="w-3.5 h-3.5 inline mr-1 text-highlight" />
-              Instantly verify the authenticity of any construction permit
+              {t('landing.verify_hint')}
             </p>
           </form>
         </div>
@@ -179,12 +181,12 @@ export const LandingPage: React.FC = () => {
       <section className="py-24 px-4 bg-slate-50">
         <div className="container mx-auto max-w-5xl">
           <div className="text-center mb-16">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">Why ACPS</p>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">{t('landing.why_acps')}</p>
             <h2 className="text-3xl md:text-4xl font-bold text-primary tracking-tight mb-4">
-              Everything you need
+              {t('landing.features_title')}
             </h2>
             <p className="text-base text-slate-500 max-w-lg mx-auto">
-              A complete digital solution designed for Ethiopia's growing construction industry
+              {t('landing.features_subtitle')}
             </p>
           </div>
 
@@ -214,20 +216,20 @@ export const LandingPage: React.FC = () => {
       <section className="py-24 px-4 bg-white">
         <div className="container mx-auto max-w-5xl">
           <div className="text-center mb-16">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">Process</p>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">{t('landing.process_subtitle')}</p>
             <h2 className="text-3xl md:text-4xl font-bold text-primary tracking-tight mb-4">
-              How it works
+              {t('landing.process_title')}
             </h2>
             <p className="text-base text-slate-500 max-w-lg mx-auto">
-              Getting your construction permit has never been easier
+              {t('landing.process_desc')}
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { step: '1', title: 'Create Account', description: 'Register online and complete your business profile with your credentials and documentation.' },
-              { step: '2', title: 'Submit Application', description: 'Upload your documents and submit your permit application digitally for review.' },
-              { step: '3', title: 'Get Approved', description: 'Receive your approved permit with digital verification and start building within days.' },
+              { step: '1', title: t('landing.process_1_title'), description: t('landing.process_1_desc') },
+              { step: '2', title: t('landing.process_2_title'), description: t('landing.process_2_desc') },
+              { step: '3', title: t('landing.process_3_title'), description: t('landing.process_3_desc') },
             ].map((item, index) => (
               <div key={index} className="text-center group">
                 <div className="w-14 h-14 rounded-2xl bg-primary/5 text-primary font-bold text-lg flex items-center justify-center mx-auto mb-5 group-hover:bg-highlight/10 group-hover:text-highlight transition-colors duration-200">
@@ -245,12 +247,12 @@ export const LandingPage: React.FC = () => {
       <section className="py-24 px-4 bg-slate-50">
         <div className="container mx-auto max-w-5xl">
           <div className="text-center mb-16">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">Testimonials</p>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">{t('landing.testimonials_subtitle')}</p>
             <h2 className="text-3xl md:text-4xl font-bold text-primary tracking-tight mb-4">
-              Trusted by industry leaders
+              {t('landing.testimonials_title')}
             </h2>
             <p className="text-base text-slate-500 max-w-lg mx-auto">
-              See what construction professionals across Ethiopia say about ACPS
+              {t('landing.testimonials_desc')}
             </p>
           </div>
 
@@ -289,12 +291,12 @@ export const LandingPage: React.FC = () => {
       <section className="py-24 px-4 bg-white">
         <div className="container mx-auto max-w-5xl">
           <div className="text-center mb-16">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">Benefits</p>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">{t('landing.benefits_subtitle')}</p>
             <h2 className="text-3xl md:text-4xl font-bold text-primary tracking-tight mb-4">
-              Why make the switch
+              {t('landing.benefits_title')}
             </h2>
             <p className="text-base text-slate-500 max-w-lg mx-auto">
-              Digital permits are faster, more secure, and completely transparent
+              {t('landing.benefits_desc')}
             </p>
           </div>
 
@@ -343,24 +345,24 @@ export const LandingPage: React.FC = () => {
       <section className="py-24 px-4 bg-primary">
         <div className="container mx-auto max-w-3xl text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 tracking-tight">
-            Ready to streamline your permits?
+            {t('landing.cta_title')}
           </h2>
           <p className="text-base text-white/60 mb-8 max-w-md mx-auto leading-relaxed">
-            Join over 8,200 construction professionals already using ACPS to process their permits faster and more efficiently.
+            {t('landing.cta_desc')}
           </p>
           <div className="flex flex-col sm:flex-row justify-center items-center gap-3">
             <Link
               to="/register"
               className="inline-flex items-center gap-2 bg-highlight text-primary hover:bg-white font-medium text-sm px-6 py-3 rounded-xl transition-colors duration-200"
             >
-              Start free trial
+              {t('landing.start_free')}
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
               to="/contact"
               className="text-white/70 hover:text-white font-medium text-sm px-6 py-3 rounded-xl transition-colors duration-200"
             >
-              Talk to sales
+              {t('landing.talk_sales')}
             </Link>
           </div>
         </div>
