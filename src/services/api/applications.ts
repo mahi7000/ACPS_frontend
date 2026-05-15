@@ -21,15 +21,11 @@ export const applicationsApi = {
     const res = await apiClient.get(`/applications/${id}/fee/`);
     return res.data;
   },
-  // services/api/applications.ts
   uploadDocument: (id: string, formData: FormData) => {
     return apiClient.post(`/applications/${id}/documents/`, formData, {
       headers: {
-        // We explicitly tell Axios NOT to set a content type 
-        // by deleting it from this specific request's config
         'Content-Type': 'multipart/form-data',
       },
-      // This tells Axios not to transform the request body at all
       transformRequest: [(data) => data],
     });
   },
@@ -59,33 +55,60 @@ export const applicationsApi = {
     const res = await apiClient.get(`/applications/${id}/timeline/`);
     return res.data;
   },
-  // Get invoice for an application (creates one if not exists)
-  getOrCreateInvoice: async (applicationId: string) => {
-    try {
-      // First try to get existing invoice
-      const response = await apiClient.get(`/applications/${applicationId}/invoice/`);
-      return response.data;
-    } catch (error: any) {
-      // If invoice doesn't exist (404), try to create one
-      if (error.response?.status === 404) {
-        try {
-          const createResponse = await apiClient.post(`/applications/${applicationId}/create-invoice/`);
-          return createResponse.data;
-        } catch (createError: any) {
-          // If creation also fails, throw a more descriptive error
-          if (createError.response?.status === 404) {
-            throw new Error('Application not found or not yet submitted');
-          }
-          throw createError;
-        }
-      }
-      throw error;
-    }
+
+  // PAYMENT API ENDPOINTS
+
+  // Get invoice details
+  getInvoice: async (invoiceId: string) => {
+    const res = await apiClient.get(`/payments/invoices/${invoiceId}/`);
+    return res.data;
   },
 
-  // Get payment status
-  getPaymentStatus: async (applicationId: string) => {
-    const response = await apiClient.get(`/applications/${applicationId}/payment-status/`);
-    return response.data;
-  }
+  // Pay invoice
+  payInvoice: async (invoiceId: string, paymentMethod: string) => {
+    const res = await apiClient.post(`/payments/invoices/${invoiceId}/pay/`, {
+      payment_method: paymentMethod
+    });
+    return res.data;
+  },
+
+  // Upload bank receipt
+  uploadBankReceipt: async (invoiceId: string, receiptFile: File) => {
+    const formData = new FormData();
+    formData.append('receipt', receiptFile);
+
+    const res = await apiClient.post(`/payments/invoices/${invoiceId}/bank-receipt/`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return res.data;
+  },
+
+  // Download receipt
+  getReceipt: async (paymentUuid: string) => {
+    const res = await apiClient.get(`/payments/receipts/${paymentUuid}/`, {
+      responseType: 'blob'
+    });
+    return res.data;
+  },
+
+  // Admin: Confirm payment
+  confirmPayment: async (invoiceId: string) => {
+    const res = await apiClient.put(`/payments/invoices/${invoiceId}/confirm/`);
+    return res.data;
+  },
+
+  // Admin: List all payments
+  listPayments: async (params?: any) => {
+    const res = await apiClient.get('/payments/', { params });
+    return res.data;
+  },
+
+  // Add this method to your applicationsApi
+  getInvoiceByApplication: async (applicationId: string) => {
+    // Try to get invoice by application ID
+    const res = await apiClient.get(`/payments/invoices/?application_id=${applicationId}`);
+    return res.data;
+  },
 };

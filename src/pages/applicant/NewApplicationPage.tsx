@@ -150,11 +150,30 @@ export const NewApplicationPage: React.FC = () => {
     setLoading(true);
     try {
       const result = await applicationsApi.submit(applicationId);
-      toast.success('Application submitted successfully! You can pay the application fee from your dashboard.', { duration: 6000 });
 
-      // Navigate to dashboard - they'll pay from there
-      navigate('/applicant/dashboard');
+      if (result.invoice_id && applicationId) {
+        // Save mapping: applicationId -> invoiceId
+        const invoiceMap = JSON.parse(localStorage.getItem('app_invoices') || '{}');
+        invoiceMap[applicationId] = result.invoice_id;
+        localStorage.setItem('app_invoices', JSON.stringify(invoiceMap));
+      }
 
+      // Store the invoice_id in the application data or local state
+      toast.success(
+        result.invoice_id
+          ? 'Application submitted! Redirecting to payment...'
+          : 'Application submitted successfully! You can pay from your dashboard.',
+        { duration: 4000 }
+      );
+
+      // If we have an invoice_id, navigate directly to payment
+      if (result.invoice_id) {
+        setTimeout(() => {
+          navigate(`/applicant/payment/${result.invoice_id}`);
+        }, 1500);
+      } else {
+        navigate('/applicant/dashboard');
+      }
     } catch (err: any) {
       const errorData = err.response?.data;
 

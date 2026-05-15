@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { paymentsApi } from '@/services/api/payments';
 import { applicationsApi } from '@/services/api/applications';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 
 export const PaymentPage: React.FC = () => {
   const { applicationId } = useParams<{ applicationId: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -19,19 +20,50 @@ export const PaymentPage: React.FC = () => {
   useEffect(() => {
     const fetchInvoice = async () => {
       try {
-        const appData = await applicationsApi.getById(applicationId!);
+        // Check if we have an invoice_id in the query params
+        const invoiceIdFromParams = searchParams.get('invoice_id');
 
-        // CRITICAL: Use the invoice_id provided by the backend application data
-        if (appData.invoice_id) {
-          const invoiceData = await paymentsApi.getInvoice(appData.invoice_id);
+        // If we have invoice_id in query params, use it directly
+        if (invoiceIdFromParams) {
+          const invoiceData = await paymentsApi.getInvoice(invoiceIdFromParams);
           setInvoice(invoiceData);
+          setLoading(false);
+          return;
+        }
+
+        // Check if the URL parameter is an invoice ID (starts with INV-)
+        if (applicationId && applicationId.startsWith('INV-')) {
+          // It's already an invoice ID
+          const invoiceData = await paymentsApi.getInvoice(applicationId);
+          setInvoice(invoiceData);
+          setLoading(false);
+          return;
+        }
+
+        // It's an application ID (UUID), we need to find the invoice
+        if (applicationId) {
+          try {
+            // Try to get invoices for this application
+            const invoiceData = await applicationsApi.getInvoiceByApplication(applicationId);
+            const invoices = invoiceData.results || invoiceData;
+            const invoice = Array.isArray(invoices) ? invoices[0] : invoices;
+
+            if (invoice?.invoice_id) {
+              const invoiceDetails = await paymentsApi.getInvoice(invoice.invoice_id);
+              setInvoice(invoiceDetails);
+            } else {
+              toast.error('No invoice found for this application. The application may need to be submitted first.');
+            }
+          } catch (err) {
+            console.error('Failed to fetch invoice for application:', err);
+            toast.error('Could not find invoice for this application.');
+          }
         } else {
-          // Handle case where application exists but no invoice was generated
-          toast.error('No invoice associated with this application.');
+          toast.error('No application or invoice ID provided.');
         }
       } catch (err) {
         console.error('Failed to load invoice:', err);
-        toast.error('Could not find a valid invoice for this application.');
+        toast.error('Could not find a valid invoice.');
       } finally {
         setLoading(false);
       }
@@ -40,7 +72,7 @@ export const PaymentPage: React.FC = () => {
     if (applicationId) {
       fetchInvoice();
     }
-  }, [applicationId]);
+  }, [applicationId, searchParams]);
 
   const handleDigitalPayment = async () => {
     if (!selectedMethod) {
@@ -54,7 +86,12 @@ export const PaymentPage: React.FC = () => {
 
       if (response.status === 'CONFIRMED') {
         toast.success('Payment successful! Your application is now awaiting assignment.');
-        navigate(`/applicant/applications/${applicationId}`);
+        // Navigate back to application details or dashboard
+        if (invoice.application_id) {
+          navigate(`/applicant/applications/${invoice.application_id}`);
+        } else {
+          navigate('/applicant/dashboard');
+        }
       } else if (response.status === 'AWAITING_MANUAL_CONFIRMATION') {
         // This shouldn't happen for digital payments, but handle it
         setBankDetails(response.bank_details);
@@ -100,7 +137,12 @@ export const PaymentPage: React.FC = () => {
     try {
       const response = await paymentsApi.uploadReceipt(invoice.invoice_id, formData);
       toast.success(response.detail || 'Receipt uploaded. Awaiting manual confirmation.');
-      navigate(`/applicant/applications/${applicationId}`);
+      // Navigate back to application details or dashboard
+      if (invoice.application_id) {
+        navigate(`/applicant/applications/${invoice.application_id}`);
+      } else {
+        navigate('/applicant/dashboard');
+      }
     } catch (err: any) {
       console.error('Receipt upload error:', err);
       toast.error(err.response?.data?.detail || 'Failed to upload receipt');
@@ -120,7 +162,17 @@ export const PaymentPage: React.FC = () => {
   };
 
   if (loading) return <LoadingSpinner fullPage />;
-  if (!invoice) return <div className="text-center py-8">Invoice not found. Please go back and submit your application first.</div>;
+  if (!invoice) return (
+    <div className="text-center py-8">
+      <p className="text-lg text-slate-600">Invoice not found.</p>
+      <button
+        onClick={() => navigate('/applicant/dashboard')}
+        className="btn btn-primary mt-4"
+      >
+        Go to Dashboard
+      </button>
+    </div>
+  );
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -132,7 +184,7 @@ export const PaymentPage: React.FC = () => {
           <div className="space-y-4">
             <div className="flex justify-between">
               <span className="text-slate-500">Application ARN</span>
-              <span className="font-medium text-slate-800">{invoice.application_arn}</span>
+              <span className="font-medium text-slate-800">{invoice.application_arn || 'N/A'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Invoice ID</span>
@@ -142,14 +194,23 @@ export const PaymentPage: React.FC = () => {
             <div className="bg-highlight/10 border border-highlight rounded-lg p-4 mt-6">
               <h3 className="font-semibold text-slate-800 mb-3">Fee Breakdown</h3>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-slate-600">{invoice.fee_breakdown?.base_description || 'Base Fee'}</span>
-                  <span>{(invoice.fee_breakdown?.base_fee || 0).toLocaleString()} ETB</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">{invoice.fee_breakdown?.fixed_description || 'Fixed Fee'}</span>
-                  <span>{(invoice.fee_breakdown?.fixed_fee || 0).toLocaleString()} ETB</span>
-                </div>
+                {invoice.fee_breakdown ? (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">{invoice.fee_breakdown.base_description || 'Base Fee'}</span>
+                      <span>{(invoice.fee_breakdown.base_fee || 0).toLocaleString()} ETB</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">{invoice.fee_breakdown.fixed_description || 'Fixed Fee'}</span>
+                      <span>{(invoice.fee_breakdown.fixed_fee || 0).toLocaleString()} ETB</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Total Fee</span>
+                    <span>{(invoice.amount_etb || 0).toLocaleString()} ETB</span>
+                  </div>
+                )}
                 <div className="border-t border-highlight/30 pt-2 mt-2 flex justify-between font-bold text-lg text-primary">
                   <span>Total Amount</span>
                   <span>{(invoice.amount_etb || 0).toLocaleString()} ETB</span>
