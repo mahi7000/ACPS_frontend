@@ -76,6 +76,26 @@ export const ApplicationDetailPage: React.FC = () => {
 
   const isDraft = app.status === 'DRAFT';
 
+  const handlePayNow = () => {
+    // Check app state first
+    if (app.invoice_id) {
+      navigate(`/applicant/payment/${app.invoice_id}`);
+      return;
+    }
+
+    // Check localStorage for stored invoice_id
+    const invoiceMap = JSON.parse(localStorage.getItem('app_invoices') || '{}');
+    const storedInvoiceId = invoiceMap[app.application_id];
+
+    if (storedInvoiceId) {
+      navigate(`/applicant/payment/${storedInvoiceId}`);
+      return;
+    }
+
+    // If still not found, show error
+    toast.error('Invoice information not available. Please contact support.');
+  };
+
   /* ── Inline edit: building details ── */
   const handleStartEdit = () => {
     reset({
@@ -182,12 +202,36 @@ export const ApplicationDetailPage: React.FC = () => {
   };
 
   /* ── Submit draft ── */
+  /* ── Submit draft ── */
   const handleSubmitDraft = async () => {
     setSubmitting(true);
     try {
-      await applicationsApi.submit(id!);
-      toast.success('Application submitted successfully! It is now awaiting assignment.', { duration: 6000 });
-      navigate('/applicant/dashboard');
+      const result = await applicationsApi.submit(id!);
+      console.log('Submit result:', result); // Debug
+      toast.success('Application submitted successfully!', { duration: 4000 });
+
+      // Store invoice_id in localStorage
+      if (result.invoice_id && id) {
+        const invoiceMap = JSON.parse(localStorage.getItem('app_invoices') || '{}');
+        invoiceMap[id] = result.invoice_id;
+        localStorage.setItem('app_invoices', JSON.stringify(invoiceMap));
+      }
+
+      // Update app state with the result
+      setApp((prev: any) => ({
+        ...prev,
+        ...result,
+        invoice_id: result.invoice_id // Explicitly set invoice_id
+      }));
+
+      // If invoice_id is returned, navigate to payment
+      if (result.invoice_id) {
+        setTimeout(() => {
+          navigate(`/applicant/payment/${result.invoice_id}`);
+        }, 1500);
+      } else {
+        navigate('/applicant/dashboard');
+      }
     } catch (err: any) {
       const errorData = err.response?.data;
       if (errorData?.missing_documents) {
@@ -210,11 +254,10 @@ export const ApplicationDetailPage: React.FC = () => {
     { header: 'Version', accessorKey: 'version_number', cell: (i) => `v${i.version_number}` },
     {
       header: 'Status', cell: (i) => (
-        <span className={`px-2 py-1 rounded text-xs font-medium ${
-          i.validation_status === 'ACCEPTED' ? 'bg-green-100 text-green-700' :
+        <span className={`px-2 py-1 rounded text-xs font-medium ${i.validation_status === 'ACCEPTED' ? 'bg-green-100 text-green-700' :
           i.validation_status === 'REJECTED' ? 'bg-red-100 text-red-700' :
-          'bg-yellow-100 text-yellow-700'
-        }`}>
+            'bg-yellow-100 text-yellow-700'
+          }`}>
           {i.validation_status}
         </span>
       )
@@ -259,7 +302,10 @@ export const ApplicationDetailPage: React.FC = () => {
         <div className="flex-1" />
         <StatusBadge status={app.status} size="md" />
         {(app.status === 'PAYMENT_PENDING' || app.status === 'PAYMENT_EXPIRED') && (
-          <Link to={`/applicant/payment/${app.application_id}`} className="btn btn-primary">Pay Fees</Link>
+          <button onClick={handlePayNow} className="btn btn-primary inline-flex items-center gap-2">
+            {/* <CreditCard className="w-4 h-4" /> */}
+            Pay Fees
+          </button>
         )}
         {isDraft && (
           <button
@@ -297,11 +343,10 @@ export const ApplicationDetailPage: React.FC = () => {
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={`flex-1 min-w-[120px] py-2.5 text-sm font-medium rounded-md transition-colors ${
-              activeTab === key
-                ? key === 'revision' ? 'bg-red-500 text-white shadow-sm' : 'bg-white text-primary shadow-sm'
-                : key === 'revision' ? 'text-red-500 hover:bg-red-50' : 'text-slate-600 hover:text-primary'
-            }`}
+            className={`flex-1 min-w-[120px] py-2.5 text-sm font-medium rounded-md transition-colors ${activeTab === key
+              ? key === 'revision' ? 'bg-red-500 text-white shadow-sm' : 'bg-white text-primary shadow-sm'
+              : key === 'revision' ? 'text-red-500 hover:bg-red-50' : 'text-slate-600 hover:text-primary'
+              }`}
           >
             <div className="flex items-center justify-center gap-2">
               <Icon className="w-4 h-4" />
