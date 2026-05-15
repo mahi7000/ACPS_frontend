@@ -32,10 +32,10 @@ export const ReviewerDashboard: React.FC = () => {
 
         // Strategy 2: If the queue returns empty (backend bug), fall back to fetching
         // all applications and filtering by the current reviewer's user_id
-        if (raw.length === 0 && user?.user_id) {
+        if (raw.length === 0 && user?.id) {
           console.warn('[Reviewer] Queue empty — falling back to direct application search');
           const fallback = await apiClient.get('/applications/', {
-            params: { assigned_officer_id: user.user_id, page_size: 100 }
+            params: { assigned_officer_id: user.id, page_size: 100 }
           });
           const fallbackList = fallback.data?.results || fallback.data || [];
           raw = fallbackList;
@@ -55,7 +55,7 @@ export const ReviewerDashboard: React.FC = () => {
       }
     };
     fetchQueue();
-  }, [user?.user_id]);
+  }, [user?.id]);
 
   const totalInQueue = queue.length;
   const critical = queue.filter(a => {
