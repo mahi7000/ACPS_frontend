@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { inspectionsApi } from '@/services/api/inspections';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { FileUploader } from '@/components/forms/FileUploader';
@@ -11,6 +12,7 @@ import toast from 'react-hot-toast';
 import { format, parseISO } from 'date-fns';
 
 export const InspectionWorkspacePage: React.FC = () => {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -156,13 +158,13 @@ export const InspectionWorkspacePage: React.FC = () => {
               <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {format(parseISO(inspection.scheduled_date), 'EEE, MMM dd yyyy · HH:mm')}</span>
             )}
             {inspection.supervisor_name && (
-              <span className="flex items-center gap-1"><User className="w-4 h-4" /> Supervisor: {inspection.supervisor_name} · {inspection.supervisor_phone}</span>
+              <span className="flex items-center gap-1"><User className="w-4 h-4" /> {t('inspector.supervisor')} {inspection.supervisor_name} · {inspection.supervisor_phone}</span>
             )}
           </div>
         </div>
         {inspection.status === 'SCHEDULED' && (
           <button onClick={handleStart} disabled={starting} className="btn btn-primary gap-2 shrink-0">
-            <Play className="w-4 h-4" /> {starting ? 'Starting...' : 'Start Inspection'}
+            <Play className="w-4 h-4" /> {starting ? t('inspector.starting') : t('inspector.start_inspection')}
           </button>
         )}
       </div>
@@ -173,12 +175,12 @@ export const InspectionWorkspacePage: React.FC = () => {
           <div className="card p-6">
             <div className="flex justify-between items-center border-b pb-4 mb-5">
               <div>
-                <h2 className="text-lg font-bold text-primary">Inspection Checklist</h2>
-                <p className="text-xs text-slate-500 mt-0.5">{completedItems} / {totalItems} items completed</p>
+                <h2 className="text-lg font-bold text-primary">{t('inspector.inspection_checklist')}</h2>
+                <p className="text-xs text-slate-500 mt-0.5">{completedItems} / {totalItems} {t('inspector.items_completed')}</p>
               </div>
               {inProgress && (
                 <button onClick={saveChecklist} disabled={savingChecklist} className="btn btn-outline text-sm gap-2 py-1.5 px-3">
-                  <Save className="w-4 h-4" /> {savingChecklist ? 'Saving...' : 'Save Progress'}
+                  <Save className="w-4 h-4" /> {savingChecklist ? t('inspector.saving') : t('inspector.save_progress')}
                 </button>
               )}
             </div>
@@ -187,11 +189,11 @@ export const InspectionWorkspacePage: React.FC = () => {
             {totalItems > 0 && (
               <div className="mb-5">
                 <div className="flex justify-between text-xs text-slate-500 mb-1">
-                  <span>{progress}% complete</span>
+                  <span>{progress}% {t('inspector.complete')}</span>
                   <span className="flex gap-3">
-                    <span className="text-green-600">✓ {passedItems} Pass</span>
-                    <span className="text-red-500">✗ {failedItems} Fail</span>
-                    <span className="text-slate-400">— {naItems} N/A</span>
+                    <span className="text-green-600">✓ {passedItems} {t('inspector.pass')}</span>
+                    <span className="text-red-500">✗ {failedItems} {t('inspector.fail')}</span>
+                    <span className="text-slate-400">— {naItems} {t('inspector.na')}</span>
                   </span>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-2">
@@ -239,14 +241,14 @@ export const InspectionWorkspacePage: React.FC = () => {
                       disabled={!inProgress}
                       value={item.notes || ''}
                       onChange={e => handleChecklistChange(item.item_id, item.result || '', e.target.value)}
-                      placeholder="Add notes..."
+                      placeholder={t('inspector.add_notes')}
                       className="input-field flex-1 py-1.5 text-sm"
                     />
                   </div>
                 </div>
               ))}
               {checklist.length === 0 && (
-                <p className="text-slate-400 italic text-sm text-center py-8">No checklist items provided for this inspection.</p>
+                <p className="text-slate-400 italic text-sm text-center py-8">{t('inspector.no_checklist')}</p>
               )}
             </div>
           </div>
@@ -257,13 +259,13 @@ export const InspectionWorkspacePage: React.FC = () => {
           {/* Photos */}
           <div className="card p-5">
             <h2 className="text-base font-bold text-primary mb-4 flex items-center gap-2">
-              <Camera className="w-5 h-5" /> Site Photos
+              <Camera className="w-5 h-5" /> {t('inspector.site_photos')}
               <span className={`ml-auto text-xs font-semibold px-2 py-0.5 rounded-full ${
                 (photos.length + photoFiles.length) >= 3
                   ? 'bg-green-100 text-green-700'
                   : 'bg-orange-100 text-orange-700'
               }`}>
-                {photos.length + photoFiles.length} / 3 min
+                {photos.length + photoFiles.length} / 3 {t('inspector.min')}
               </span>
             </h2>
 
@@ -278,11 +280,11 @@ export const InspectionWorkspacePage: React.FC = () => {
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center">
                         <MapPin className="w-6 h-6 text-slate-400" />
-                        <span className="text-[9px] text-slate-400 mt-1">GPS Tagged</span>
+                        <span className="text-[9px] text-slate-400 mt-1">{t('inspector.gps_tagged')}</span>
                       </div>
                     )}
                     <div className="absolute bottom-0 inset-x-0 bg-black/40 px-1 py-0.5 text-[8px] text-white text-center truncate">
-                      {p.gps_lat ? `${Number(p.gps_lat).toFixed(4)}, ${Number(p.gps_lng).toFixed(4)}` : 'GPS Tagged'}
+                      {p.gps_lat ? `${Number(p.gps_lat).toFixed(4)}, ${Number(p.gps_lng).toFixed(4)}` : t('inspector.gps_tagged')}
                     </div>
                   </div>
                 ))}
@@ -290,7 +292,7 @@ export const InspectionWorkspacePage: React.FC = () => {
                 {photoFiles.map((f, idx) => (
                   <div key={`local-${idx}`} className="aspect-square bg-slate-100 rounded-lg overflow-hidden relative border border-green-300">
                     <img src={URL.createObjectURL(f)} alt={f.name} className="w-full h-full object-cover" />
-                    <div className="absolute bottom-0 inset-x-0 bg-green-600/70 px-1 py-0.5 text-[8px] text-white text-center">Uploaded</div>
+                    <div className="absolute bottom-0 inset-x-0 bg-green-600/70 px-1 py-0.5 text-[8px] text-white text-center">{t('inspector.uploaded')}</div>
                   </div>
                 ))}
               </div>
@@ -302,19 +304,19 @@ export const InspectionWorkspacePage: React.FC = () => {
                 acceptedTypes={['image/jpeg', 'image/png', 'image/heic']}
                 maxSizeMB={15}
                 multiple
-                label="Add Photos"
+                label={t('inspector.add_photos')}
               />
             )}
 
             {!inProgress && photos.length === 0 && (
-              <p className="text-slate-400 text-xs italic text-center py-4">No photos yet. Start the inspection to upload.</p>
+              <p className="text-slate-400 text-xs italic text-center py-4">{t('inspector.no_photos')}</p>
             )}
           </div>
 
           {/* Outcome */}
           {inProgress && (
             <div className="card p-5">
-              <h2 className="text-base font-bold text-slate-800 mb-4">Inspection Outcome</h2>
+              <h2 className="text-base font-bold text-slate-800 mb-4">{t('inspector.inspection_outcome')}</h2>
               <div className="space-y-2 mb-4">
                 <button
                   onClick={() => setOutcome('PASSED')}
@@ -325,7 +327,7 @@ export const InspectionWorkspacePage: React.FC = () => {
                   }`}
                 >
                   <CheckCircle className={`w-5 h-5 ${outcome === 'PASSED' ? 'text-green-600' : 'text-slate-300'}`} />
-                  Inspection Passed
+                  {t('inspector.inspection_passed')}
                 </button>
                 <button
                   onClick={() => setOutcome('FAILED')}
@@ -336,7 +338,7 @@ export const InspectionWorkspacePage: React.FC = () => {
                   }`}
                 >
                   <XCircle className={`w-5 h-5 ${outcome === 'FAILED' ? 'text-red-500' : 'text-slate-300'}`} />
-                  Inspection Failed
+                  {t('inspector.inspection_failed')}
                 </button>
               </div>
 
@@ -344,17 +346,17 @@ export const InspectionWorkspacePage: React.FC = () => {
                 <div className="mb-4">
                   <label className="label flex items-center gap-1">
                     <AlertTriangle className="w-4 h-4 text-orange-500" />
-                    Failure Summary <span className="text-red-500">*</span>
+                    {t('inspector.failure_summary')} <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     value={failureSummary}
                     onChange={e => setFailureSummary(e.target.value)}
                     rows={4}
-                    placeholder="Describe all failures and non-compliances in detail (min 50 characters)..."
+                    placeholder={t('inspector.describe_failures')}
                     className="input-field text-sm"
                   />
                   <p className={`text-xs mt-1 ${failureSummary.length < 50 ? 'text-orange-500' : 'text-green-600'}`}>
-                    {failureSummary.length}/50 characters
+                    {failureSummary.length}/50 {t('inspector.characters')}
                   </p>
                 </div>
               )}
@@ -367,7 +369,7 @@ export const InspectionWorkspacePage: React.FC = () => {
                   outcome === 'PASSED' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
                 }`}
               >
-                {submitting ? 'Submitting...' : `Submit — ${outcome || 'Select Outcome'}`}
+                {submitting ? t('inspector.saving') : `${t('inspector.submit')} ${outcome || t('inspector.select_outcome')}`}
               </button>
             </div>
           )}

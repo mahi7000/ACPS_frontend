@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { reviewsApi } from '@/services/api/reviews';
 import { applicationsApi } from '@/services/api/applications';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -15,6 +16,7 @@ import { differenceInDays } from 'date-fns';
 type DecisionModal = null | 'approve' | 'reject';
 
 export const ReviewWorkspacePage: React.FC = () => {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [workspace, setWorkspace] = useState<any>(null);
@@ -276,10 +278,10 @@ export const ReviewWorkspacePage: React.FC = () => {
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div className="min-w-0">
-            <h1 className="text-base font-bold text-slate-800 truncate">Review: {app.arn || 'Draft'}</h1>
+            <h1 className="text-base font-bold text-slate-800 truncate">{t('reviewer.review_title')} {app.arn || t('reviewer.draft')}</h1>
             <p className="text-xs text-slate-500 truncate">
-              Cat {app.building_category} · {app.intended_use} · Open {daysOpen}d
-              {revCycle > 3 && <span className="ml-2 text-red-600 font-bold">⚠ {revCycle} revision cycles</span>}
+              {t('reviewer.cat')} {app.building_category} · {app.intended_use} · {t('reviewer.open')} {daysOpen}{t('reviewer.d')}
+              {revCycle > 3 && <span className="ml-2 text-red-600 font-bold">⚠ {revCycle} {t('reviewer.revisions')}</span>}
             </p>
           </div>
         </div>
@@ -291,7 +293,7 @@ export const ReviewWorkspacePage: React.FC = () => {
             onClick={() => setModal('reject')}
             className="btn btn-outline text-danger border-danger hover:bg-danger/10 text-xs py-1.5 px-3 gap-1"
           >
-            <XCircle className="w-3.5 h-3.5" /> Request Revision
+            <XCircle className="w-3.5 h-3.5" /> {t('reviewer.request_revision')}
           </button>
 
           <button
@@ -302,9 +304,9 @@ export const ReviewWorkspacePage: React.FC = () => {
                 ? 'bg-green-600 hover:bg-green-700 text-white shadow-sm' 
                 : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
             }`}
-            title={allDocsValidated ? 'Recommend for approval' : `Accept all ${pendingDocs} pending documents first`}
+            title={allDocsValidated ? t('reviewer.recommend_approval') : `Accept all ${pendingDocs} pending documents first`}
           >
-            <CheckCircle className="w-3.5 h-3.5" /> Recommend Approval
+            <CheckCircle className="w-3.5 h-3.5" /> {t('reviewer.recommend_approval')}
           </button>
         </div>
       </div>
@@ -312,7 +314,7 @@ export const ReviewWorkspacePage: React.FC = () => {
       {revCycle > 3 && (
         <div className="bg-red-50 border-b border-red-200 px-6 py-2 flex items-center gap-2 text-red-700 text-sm shrink-0">
           <AlertTriangle className="w-4 h-4" />
-          <strong>Warning:</strong> This application has exceeded 3 revision cycles ({revCycle} cycles). Consider escalating.
+          {t('reviewer.revision_warning', { cycles: revCycle })}
         </div>
       )}
 
@@ -324,9 +326,9 @@ export const ReviewWorkspacePage: React.FC = () => {
           {/* Left Tabs */}
           <div className="flex bg-white border-b border-slate-200 px-4 pt-2 gap-1 shrink-0">
             {([
-              { key: 'documents', label: 'Documents', icon: FileText },
-              { key: 'details', label: 'App Details', icon: Building },
-              { key: 'neighbors', label: 'Neighbors', icon: Users },
+              { key: 'documents', label: t('reviewer.documents'), icon: FileText },
+              { key: 'details', label: t('reviewer.app_details'), icon: Building },
+              { key: 'neighbors', label: t('reviewer.neighbors'), icon: Users },
             ] as const).map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
@@ -347,7 +349,7 @@ export const ReviewWorkspacePage: React.FC = () => {
             {/* Documents */}
             {activeLeft === 'documents' && (
               <div className="space-y-3">
-                {docs.length === 0 && <p className="text-slate-500 text-sm italic">No documents submitted.</p>}
+                {docs.length === 0 && <p className="text-slate-500 text-sm italic">{t('reviewer.no_docs')}</p>}
                 {docs.map((doc: any) => (
                   <div
                     key={doc.document_id}
@@ -383,7 +385,7 @@ export const ReviewWorkspacePage: React.FC = () => {
                         <button
                           onClick={() => handleDownload(doc)}
                           className="p-1.5 text-primary hover:text-primary/80 rounded-lg hover:bg-primary/5 inline-flex"
-                          title="Download document"
+                          title={t('reviewer.download_doc')}
                         >
                           <Download className="w-4 h-4" />
                         </button>
@@ -393,7 +395,7 @@ export const ReviewWorkspacePage: React.FC = () => {
                     {/* Saved timestamp */}
                     {localValidations[doc.document_id]?.savedAt && (
                       <p className="text-xs text-slate-400 mt-2">
-                        Saved {new Date(localValidations[doc.document_id].savedAt).toLocaleString()}
+                        {t('reviewer.saved')} {new Date(localValidations[doc.document_id].savedAt).toLocaleString()}
                         {localValidations[doc.document_id].notes && (
                           <span className="ml-2 italic">— "{localValidations[doc.document_id].notes}"</span>
                         )}
@@ -406,27 +408,27 @@ export const ReviewWorkspacePage: React.FC = () => {
                         disabled={localValidations[doc.document_id]?.status === 'ACCEPTED'}
                         className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium"
                       >
-                        <ThumbsUp className="w-3.5 h-3.5" /> Accept
+                        <ThumbsUp className="w-3.5 h-3.5" /> {t('reviewer.accept')}
                       </button>
                       <button
                         onClick={() => handleValidateDoc(doc.document_id, 'REJECTED')}
                         disabled={localValidations[doc.document_id]?.status === 'REJECTED'}
                         className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium"
                       >
-                        <ThumbsDown className="w-3.5 h-3.5" /> Reject
+                        <ThumbsDown className="w-3.5 h-3.5" /> {t('reviewer.reject')}
                       </button>
                       <button
                         onClick={() => { setSelectedDoc(doc.document_id); setCommentDoc(doc.document_id); }}
                         className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-slate-50 text-slate-600 hover:bg-slate-100 font-medium"
                       >
-                        <MessageSquarePlus className="w-3.5 h-3.5" /> Comment
+                        <MessageSquarePlus className="w-3.5 h-3.5" /> {t('reviewer.comment')}
                       </button>
                       {localValidations[doc.document_id] && (
                         <button
                           onClick={() => handleClearDocValidation(doc.document_id)}
                           className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 font-medium ml-auto"
                         >
-                          ✕ Clear
+                          ✕ {t('reviewer.clear')}
                         </button>
                       )}
                     </div>
@@ -438,23 +440,23 @@ export const ReviewWorkspacePage: React.FC = () => {
             {/* Application Details */}
             {activeLeft === 'details' && (
               <div className="bg-white rounded-xl border border-slate-200 p-6">
-                <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">Application Summary</h3>
+                <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">{t('reviewer.app_summary')}</h3>
                 <div className="grid grid-cols-2 gap-4">
                   {[
-                    ['Applicant', app.applicant_name],
-                    ['Category', `Category ${app.building_category}`],
-                    ['Intended Use', app.intended_use],
-                    ['Project Value', `${(app.project_value_etb || 0).toLocaleString()} ETB`],
-                    ['Address', app.plot_address],
-                    ['Subcity / Woreda', `${app.subcity_id} / ${app.woreda}`],
-                    ['Height / Area', `${app.height_m}m / ${app.floor_area_sqm} sqm`],
-                    ['Floors (Above/Below)', `${app.floors_above} / ${app.floors_below}`],
-                    ['Architect', app.architect_name],
-                    ['Architect License', app.architect_license],
+                    [t('reviewer.applicant'), app.applicant_name],
+                    [t('reviewer.cat'), `${t('reviewer.cat')} ${app.building_category}`],
+                    [t('reviewer.intended_use'), app.intended_use],
+                    [t('reviewer.project_value'), `${(app.project_value_etb || 0).toLocaleString()} ETB`],
+                    [t('reviewer.address'), app.plot_address],
+                    [t('reviewer.subcity_woreda'), `${app.subcity_id} / ${app.woreda}`],
+                    [t('reviewer.height_area'), `${app.height_m}m / ${app.floor_area_sqm} sqm`],
+                    [t('reviewer.floors_above_below'), `${app.floors_above} / ${app.floors_below}`],
+                    [t('reviewer.architect'), app.architect_name],
+                    [t('reviewer.architect_license'), app.architect_license],
                   ].map(([label, val]) => (
                     <div key={label}>
                       <p className="text-xs text-slate-500 uppercase tracking-wider">{label}</p>
-                      <p className="font-medium text-slate-800 text-sm mt-0.5">{val || 'N/A'}</p>
+                      <p className="font-medium text-slate-800 text-sm mt-0.5">{val || t('reviewer.na')}</p>
                     </div>
                   ))}
                 </div>
@@ -464,7 +466,7 @@ export const ReviewWorkspacePage: React.FC = () => {
             {/* Neighbors */}
             {activeLeft === 'neighbors' && (
               <div className="space-y-3">
-                {neighbors.length === 0 && <p className="text-slate-500 text-sm italic">No neighbor consents submitted.</p>}
+                {neighbors.length === 0 && <p className="text-slate-500 text-sm italic">{t('reviewer.no_neighbors')}</p>}
                 {neighbors.map((n: any, i: number) => (
                   <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 flex justify-between items-center">
                     <div>
@@ -476,7 +478,7 @@ export const ReviewWorkspacePage: React.FC = () => {
                       <button
                         onClick={() => handleNeighborDownload(n)}
                         className="p-1.5 text-primary hover:text-primary/80 rounded-lg hover:bg-primary/5 inline-flex"
-                        title="Download consent document"
+                        title={t('reviewer.download_doc')}
                       >
                         <Download className="w-4 h-4" />
                       </button>
@@ -493,10 +495,10 @@ export const ReviewWorkspacePage: React.FC = () => {
           <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 shrink-0">
             <h2 className="font-semibold text-slate-800 flex items-center gap-2">
               <MessageSquarePlus className="w-4 h-4 text-primary" />
-              Comments & Revisions
+              {t('reviewer.comments_revisions')}
               {openComments.length > 0 && (
                 <span className="ml-auto bg-orange-100 text-orange-700 text-xs px-2 py-0.5 rounded-full font-bold">
-                  {openComments.length} open
+                  {openComments.length} {t('reviewer.open')}
                 </span>
               )}
             </h2>
@@ -504,7 +506,7 @@ export const ReviewWorkspacePage: React.FC = () => {
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {comments.length === 0 && (
-              <p className="text-center text-slate-400 text-sm mt-8">No comments yet. Add one below.</p>
+              <p className="text-center text-slate-400 text-sm mt-8">{t('reviewer.no_comments')}</p>
             )}
             {comments.map((c: any) => (
               <div key={c.comment_id} className={`rounded-xl border p-3 text-sm ${
@@ -522,14 +524,14 @@ export const ReviewWorkspacePage: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-slate-700">{c.content}</p>
-                {c.document && <p className="text-xs text-slate-400 mt-1">On: {c.document}</p>}
+                {c.document && <p className="text-xs text-slate-400 mt-1">{t('reviewer.on')} {c.document}</p>}
                 <p className="text-xs text-slate-400 mt-1">{c.author_name}</p>
                 {c.resolution_status === 'OPEN' && (
                   <button
                     onClick={() => handleResolveComment(c.comment_id)}
                     className="mt-2 flex items-center gap-1 text-xs font-medium text-green-700 hover:text-green-800"
                   >
-                    <CheckSquare className="w-3.5 h-3.5" /> Mark Resolved
+                    <CheckSquare className="w-3.5 h-3.5" /> {t('reviewer.mark_resolved')}
                   </button>
                 )}
               </div>
@@ -543,11 +545,11 @@ export const ReviewWorkspacePage: React.FC = () => {
                 onChange={e => setCommentCategory(e.target.value)}
                 className="input-field text-sm py-2"
               >
-                <option value="MISSING_INFO">Missing Information</option>
-                <option value="DRAWING_ERROR">Drawing Error</option>
-                <option value="CODE_NON_COMPLIANCE">Code Non-Compliance</option>
-                <option value="CLARIFICATION">Clarification Needed</option>
-                <option value="OTHER">Other</option>
+                <option value="MISSING_INFO">{t('reviewer.missing_info')}</option>
+                <option value="DRAWING_ERROR">{t('reviewer.drawing_error')}</option>
+                <option value="CODE_NON_COMPLIANCE">{t('reviewer.code_non_compliance')}</option>
+                <option value="CLARIFICATION">{t('reviewer.clarification_needed')}</option>
+                <option value="OTHER">{t('reviewer.other')}</option>
               </select>
               {docs.length > 0 && (
                 <select
@@ -555,7 +557,7 @@ export const ReviewWorkspacePage: React.FC = () => {
                   onChange={e => setCommentDoc(e.target.value)}
                   className="input-field text-sm py-2"
                 >
-                  <option value="">No specific document</option>
+                  <option value="">{t('reviewer.no_specific_doc')}</option>
                   {docs.map((d: any) => (
                     <option key={d.document_id} value={d.document_id}>
                       {d.document_type?.replace(/_/g, ' ')}
@@ -566,12 +568,12 @@ export const ReviewWorkspacePage: React.FC = () => {
               <textarea
                 value={newComment}
                 onChange={e => setNewComment(e.target.value)}
-                placeholder="Describe the issue clearly..."
+                placeholder={t('reviewer.describe_issue')}
                 className="input-field text-sm min-h-[80px]"
                 required
               />
               <button type="submit" className="btn btn-primary w-full py-2 text-sm gap-2">
-                <MessageSquarePlus className="w-4 h-4" /> Add Comment
+                <MessageSquarePlus className="w-4 h-4" /> {t('reviewer.add_comment')}
               </button>
             </form>
           </div>
@@ -588,15 +590,15 @@ export const ReviewWorkspacePage: React.FC = () => {
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
-              <h2 className="text-xl font-bold text-slate-800">Recommend Approval?</h2>
+              <h2 className="text-xl font-bold text-slate-800">{t('reviewer.recommend_approval_q')}</h2>
               <p className="text-slate-500 text-sm mt-2">
-                This will move the application to <strong>Awaiting Senior Approval</strong>. All {docs.filter((d: any) => d.validation_status !== 'ACCEPTED').length} unvalidated documents will be included.
+                {t('reviewer.recommend_desc', { count: docs.filter((d: any) => d.validation_status !== 'ACCEPTED').length })}
               </p>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setModal(null)} className="btn btn-outline flex-1">Cancel</button>
+              <button onClick={() => setModal(null)} className="btn btn-outline flex-1">{t('reviewer.cancel')}</button>
               <button onClick={handleApprove} disabled={submitting} className="btn flex-1 bg-green-600 text-white hover:bg-green-700 font-medium rounded-lg py-2.5">
-                {submitting ? 'Submitting...' : 'Confirm Approval'}
+                {submitting ? t('reviewer.submitting') : t('reviewer.confirm_approval')}
               </button>
             </div>
           </div>
@@ -607,37 +609,37 @@ export const ReviewWorkspacePage: React.FC = () => {
       {modal === 'reject' && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6">
-            <h2 className="text-xl font-bold text-slate-800 mb-1">Request Revision</h2>
-            <p className="text-sm text-slate-500 mb-5">Provide a detailed reason and cite the relevant regulation.</p>
+            <h2 className="text-xl font-bold text-slate-800 mb-1">{t('reviewer.request_revision')}</h2>
+            <p className="text-sm text-slate-500 mb-5">{t('reviewer.request_revision_desc')}</p>
             <div className="space-y-4">
               <div>
-                <label className="label">Rejection Reason <span className="text-red-500">*</span></label>
+                <label className="label">{t('reviewer.rejection_reason')} <span className="text-red-500">*</span></label>
                 <textarea
                   value={rejectReason}
                   onChange={e => setRejectReason(e.target.value)}
                   rows={5}
-                  placeholder="Describe all issues in detail (min 100 characters)..."
+                  placeholder={t('reviewer.describe_issues')}
                   className="input-field"
                 />
                 <p className={`text-xs mt-1 ${rejectReason.length < 100 ? 'text-orange-500' : 'text-green-600'}`}>
-                  {rejectReason.length}/100 characters
+                  {rejectReason.length}/100 {t('reviewer.characters')}
                 </p>
               </div>
               <div>
-                <label className="label">Regulation Citation <span className="text-red-500">*</span></label>
+                <label className="label">{t('reviewer.regulation_citation')} <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   value={rejectCitation}
                   onChange={e => setRejectCitation(e.target.value)}
-                  placeholder="e.g. EBCS 2, Section 4.3.1"
+                  placeholder={t('reviewer.citation_placeholder')}
                   className="input-field"
                 />
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setModal(null)} className="btn btn-outline flex-1">Cancel</button>
+              <button onClick={() => setModal(null)} className="btn btn-outline flex-1">{t('reviewer.cancel')}</button>
               <button onClick={handleReject} disabled={submitting} className="btn flex-1 bg-red-600 text-white hover:bg-red-700 font-medium rounded-lg py-2.5">
-                {submitting ? 'Submitting...' : 'Return for Revision'}
+                {submitting ? t('reviewer.submitting') : t('reviewer.return_revision')}
               </button>
             </div>
           </div>
@@ -650,32 +652,32 @@ export const ReviewWorkspacePage: React.FC = () => {
       {docRejectModal && (
         <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
-            <h2 className="text-xl font-bold text-slate-800 mb-1">Reject Document</h2>
-            <p className="text-sm text-slate-500 mb-5">Provide a specific reason for rejecting this document.</p>
+            <h2 className="text-xl font-bold text-slate-800 mb-1">{t('reviewer.reject_doc')}</h2>
+            <p className="text-sm text-slate-500 mb-5">{t('reviewer.reject_doc_desc')}</p>
             <div className="space-y-4">
               <div>
-                <label className="label">Rejection Reason <span className="text-red-500">*</span></label>
+                <label className="label">{t('reviewer.rejection_reason')} <span className="text-red-500">*</span></label>
                 <textarea
                   value={docRejectReason}
                   onChange={e => setDocRejectReason(e.target.value)}
                   rows={4}
-                  placeholder="Describe the issue with this document (min 50 characters)..."
+                  placeholder={t('reviewer.describe_doc_issue')}
                   className="input-field"
                   required
                 />
                 <p className={`text-xs mt-1 ${docRejectReason.length < 50 ? 'text-orange-500' : 'text-green-600'}`}>
-                  {docRejectReason.length}/50 characters
+                  {docRejectReason.length}/50 {t('reviewer.characters')}
                 </p>
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => { setDocRejectModal(null); setDocRejectReason(''); }} className="btn btn-outline flex-1">Cancel</button>
+              <button onClick={() => { setDocRejectModal(null); setDocRejectReason(''); }} className="btn btn-outline flex-1">{t('reviewer.cancel')}</button>
               <button 
                 onClick={() => handleValidateDoc(docRejectModal, 'REJECTED', docRejectReason)} 
                 disabled={docRejectReason.length < 50}
                 className="btn flex-1 bg-red-600 text-white hover:bg-red-700 font-medium rounded-lg py-2.5 disabled:opacity-50"
               >
-                Confirm Rejection
+                {t('reviewer.confirm_rejection')}
               </button>
             </div>
           </div>

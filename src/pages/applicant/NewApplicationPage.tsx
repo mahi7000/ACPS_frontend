@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -39,6 +40,7 @@ type BuildingDetails = z.infer<typeof buildingDetailsSchema>;
 type NeighborFormData = z.infer<typeof neighborSchema>;
 
 export const NewApplicationPage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [applicationId, setApplicationId] = useState<string | null>(null);
@@ -58,10 +60,10 @@ export const NewApplicationPage: React.FC = () => {
   const { fields: neighborFields, append: appendNeighbor, remove: removeNeighbor } = useFieldArray({ control: control3, name: 'neighbors' });
 
   const steps = [
-    { id: 1, title: 'Building Details', icon: Building },
-    { id: 2, title: 'Documents', icon: FileText },
-    { id: 3, title: 'Neighbor Consent', icon: Users },
-    { id: 4, title: 'Review & Submit', icon: CheckCircle },
+    { id: 1, title: t('new_app.step1'), icon: Building },
+    { id: 2, title: t('new_app.step2'), icon: FileText },
+    { id: 3, title: t('new_app.step3'), icon: Users },
+    { id: 4, title: t('new_app.step4'), icon: CheckCircle },
   ];
 
   const onStep1Submit = async (data: BuildingDetails) => {
@@ -200,11 +202,11 @@ export const NewApplicationPage: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-primary">New Application</h1>
+        <h1 className="text-2xl font-bold text-primary">{t('new_app.title')}</h1>
         {applicationId && (
           <button className="btn btn-outline text-sm py-1.5 px-3">
             <Save className="w-4 h-4 mr-2" />
-            Save Draft
+            {t('new_app.save_draft')}
           </button>
         )}
       </div>
@@ -242,34 +244,34 @@ export const NewApplicationPage: React.FC = () => {
         {/* Step 1: Building Details */}
         {currentStep === 1 && (
           <form onSubmit={handle1(onStep1Submit)} className="space-y-6">
-            <h2 className="text-xl font-bold text-slate-800 border-b pb-2 mb-6">Building Details</h2>
+            <h2 className="text-xl font-bold text-slate-800 border-b pb-2 mb-6">{t('new_app.step1')}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div><label className="label">Intended Use</label><input type="text" {...reg1('intended_use')} className="input-field" />{err1.intended_use && <p className="text-danger text-xs">{err1.intended_use.message}</p>}</div>
-              <div><label className="label">Project Value (ETB)</label><input type="number" {...reg1('project_value_etb', { valueAsNumber: true })} className="input-field" />{err1.project_value_etb && <p className="text-danger text-xs">{err1.project_value_etb.message}</p>}</div>
-              <div><label className="label">Height (m)</label><input type="number" step="0.1" {...reg1('height_m', { valueAsNumber: true })} className="input-field" />{err1.height_m && <p className="text-danger text-xs">{err1.height_m.message}</p>}</div>
-              <div><label className="label">Floor Area (sqm)</label><input type="number" step="0.1" {...reg1('floor_area_sqm', { valueAsNumber: true })} className="input-field" /></div>
-              <div><label className="label">Floors Above</label><input type="number" {...reg1('floors_above', { valueAsNumber: true })} className="input-field" /></div>
-              <div><label className="label">Floors Below</label><input type="number" {...reg1('floors_below', { valueAsNumber: true })} className="input-field" /></div>
+              <div><label className="label">{t('new_app.intended_use')}</label><input type="text" {...reg1('intended_use')} className="input-field" />{err1.intended_use && <p className="text-danger text-xs">{err1.intended_use.message}</p>}</div>
+              <div><label className="label">{t('new_app.project_value')}</label><input type="number" {...reg1('project_value_etb', { valueAsNumber: true })} className="input-field" />{err1.project_value_etb && <p className="text-danger text-xs">{err1.project_value_etb.message}</p>}</div>
+              <div><label className="label">{t('new_app.height')}</label><input type="number" step="0.1" {...reg1('height_m', { valueAsNumber: true })} className="input-field" />{err1.height_m && <p className="text-danger text-xs">{err1.height_m.message}</p>}</div>
+              <div><label className="label">{t('new_app.floor_area')}</label><input type="number" step="0.1" {...reg1('floor_area_sqm', { valueAsNumber: true })} className="input-field" /></div>
+              <div><label className="label">{t('new_app.floors_above')}</label><input type="number" {...reg1('floors_above', { valueAsNumber: true })} className="input-field" /></div>
+              <div><label className="label">{t('new_app.floors_below')}</label><input type="number" {...reg1('floors_below', { valueAsNumber: true })} className="input-field" /></div>
             </div>
 
-            <h2 className="text-xl font-bold text-slate-800 border-b pb-2 mt-8 mb-6">Location</h2>
+            <h2 className="text-xl font-bold text-slate-800 border-b pb-2 mt-8 mb-6">{t('new_app.location')}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2"><label className="label">Plot Address</label><input type="text" {...reg1('plot_address')} className="input-field" /></div>
-              <div><label className="label">Subcity</label><input type="text" {...reg1('subcity_id')} className="input-field" /></div>
-              <div><label className="label">Woreda</label><input type="text" {...reg1('woreda')} className="input-field" /></div>
-              <div><label className="label">GPS Latitude</label><input type="number" step="0.000001" {...reg1('plot_gps_lat', { valueAsNumber: true })} className="input-field" /></div>
-              <div><label className="label">GPS Longitude</label><input type="number" step="0.000001" {...reg1('plot_gps_lng', { valueAsNumber: true })} className="input-field" /></div>
+              <div className="md:col-span-2"><label className="label">{t('new_app.plot_address')}</label><input type="text" {...reg1('plot_address')} className="input-field" /></div>
+              <div><label className="label">{t('new_app.subcity')}</label><input type="text" {...reg1('subcity_id')} className="input-field" /></div>
+              <div><label className="label">{t('new_app.woreda')}</label><input type="text" {...reg1('woreda')} className="input-field" /></div>
+              <div><label className="label">{t('new_app.gps_lat')}</label><input type="number" step="0.000001" {...reg1('plot_gps_lat', { valueAsNumber: true })} className="input-field" /></div>
+              <div><label className="label">{t('new_app.gps_lng')}</label><input type="number" step="0.000001" {...reg1('plot_gps_lng', { valueAsNumber: true })} className="input-field" /></div>
             </div>
 
-            <h2 className="text-xl font-bold text-slate-800 border-b pb-2 mt-8 mb-6">Professionals</h2>
+            <h2 className="text-xl font-bold text-slate-800 border-b pb-2 mt-8 mb-6">{t('new_app.professionals')}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div><label className="label">Architect Name</label><input type="text" {...reg1('architect_name')} className="input-field" /></div>
-              <div><label className="label">Architect License</label><input type="text" {...reg1('architect_license')} className="input-field" /></div>
+              <div><label className="label">{t('new_app.architect_name')}</label><input type="text" {...reg1('architect_name')} className="input-field" /></div>
+              <div><label className="label">{t('new_app.architect_license')}</label><input type="text" {...reg1('architect_license')} className="input-field" /></div>
             </div>
 
             <div className="flex justify-end pt-6">
               <button type="submit" disabled={loading} className="btn btn-primary">
-                Next Step <ChevronRight className="w-4 h-4 ml-2" />
+                {t('new_app.next_step')} <ChevronRight className="w-4 h-4 ml-2" />
               </button>
             </div>
           </form>
@@ -278,7 +280,7 @@ export const NewApplicationPage: React.FC = () => {
         {/* Step 2: Documents */}
         {currentStep === 2 && (
           <div className="space-y-6">
-            <h2 className="text-xl font-bold text-slate-800 border-b pb-2 mb-6">Required Documents</h2>
+            <h2 className="text-xl font-bold text-slate-800 border-b pb-2 mb-6">{t('new_app.required_docs')}</h2>
             <div className="space-y-6">
               {requiredDocs.map((doc, idx) => (
                 <div key={idx} className="bg-slate-50 p-4 rounded-lg border border-slate-200">
@@ -286,11 +288,11 @@ export const NewApplicationPage: React.FC = () => {
                     <h3 className="font-medium text-slate-800">{doc.label || doc.document_type}</h3>
                     {doc.uploaded ? (
                       <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full font-medium flex items-center">
-                        <CheckCircle className="w-3 h-3 mr-1" /> Uploaded
+                        <CheckCircle className="w-3 h-3 mr-1" /> {t('new_app.uploaded')}
                       </span>
                     ) : (
                       <span className="bg-warning/10 text-warning text-xs px-2 py-1 rounded-full font-medium">
-                        Required
+                        {t('new_app.required')}
                       </span>
                     )}
                   </div>
@@ -311,10 +313,10 @@ export const NewApplicationPage: React.FC = () => {
 
             <div className="flex justify-between pt-6">
               <button onClick={() => setCurrentStep(1)} className="btn btn-outline">
-                <ChevronLeft className="w-4 h-4 mr-2" /> Previous
+                <ChevronLeft className="w-4 h-4 mr-2" /> {t('new_app.prev_step')}
               </button>
               <button onClick={() => setCurrentStep(3)} className="btn btn-primary">
-                Next Step <ChevronRight className="w-4 h-4 ml-2" />
+                {t('new_app.next_step')} <ChevronRight className="w-4 h-4 ml-2" />
               </button>
             </div>
           </div>
@@ -323,7 +325,7 @@ export const NewApplicationPage: React.FC = () => {
         {/* Step 3: Neighbors */}
         {currentStep === 3 && (
           <form onSubmit={handle3(onStep3Submit)} className="space-y-6">
-            <h2 className="text-xl font-bold text-slate-800 border-b pb-2 mb-6">Neighbor Consents</h2>
+            <h2 className="text-xl font-bold text-slate-800 border-b pb-2 mb-6">{t('new_app.neighbor_consents')}</h2>
             <p className="text-sm text-slate-600 mb-4">At least one neighbor consent is required.</p>
 
             {neighborFields.map((field, index) => (
@@ -335,18 +337,18 @@ export const NewApplicationPage: React.FC = () => {
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
                   <div>
-                    <label className="label">Neighbor Name</label>
+                    <label className="label">{t('new_app.neighbor_name')}</label>
                     <input type="text" {...reg3(`neighbors.${index}.name` as const)} className="input-field" required />
                     {err3.neighbors?.[index]?.name && <p className="text-danger text-xs">{err3.neighbors[index]?.name?.message}</p>}
                   </div>
                   <div>
-                    <label className="label">Phone Number</label>
+                    <label className="label">{t('new_app.phone')}</label>
                     <input type="text" {...reg3(`neighbors.${index}.phone` as const)} className="input-field" required />
                     {err3.neighbors?.[index]?.phone && <p className="text-danger text-xs">{err3.neighbors[index]?.phone?.message}</p>}
                   </div>
                 </div>
                 <div>
-                  <label className="label">Consent Form Document</label>
+                  <label className="label">{t('new_app.consent_doc')}</label>
                   <FileUploader
                     onUpload={(files) => handleNeighborFileUpload(index, files)}
                     acceptedTypes={['application/pdf']}
@@ -358,15 +360,15 @@ export const NewApplicationPage: React.FC = () => {
             ))}
 
             <button type="button" onClick={() => appendNeighbor({ name: '', phone: '', file: null })} className="btn btn-outline w-full py-3 border-dashed">
-              <PlusCircle className="w-5 h-5 mr-2" /> Add Another Neighbor
+              <PlusCircle className="w-5 h-5 mr-2" /> {t('new_app.add_neighbor')}
             </button>
 
             <div className="flex justify-between pt-6">
               <button type="button" onClick={() => setCurrentStep(2)} className="btn btn-outline">
-                <ChevronLeft className="w-4 h-4 mr-2" /> Previous
+                <ChevronLeft className="w-4 h-4 mr-2" /> {t('new_app.prev_step')}
               </button>
               <button type="submit" disabled={loading} className="btn btn-primary">
-                Save & Continue <ChevronRight className="w-4 h-4 ml-2" />
+                {t('new_app.save_continue')} <ChevronRight className="w-4 h-4 ml-2" />
               </button>
             </div>
           </form>
@@ -375,10 +377,10 @@ export const NewApplicationPage: React.FC = () => {
         {/* Step 4: Review */}
         {currentStep === 4 && (
           <div className="space-y-6">
-            <h2 className="text-xl font-bold text-slate-800 border-b pb-2 mb-6">Review & Submit</h2>
+            <h2 className="text-xl font-bold text-slate-800 border-b pb-2 mb-6">{t('new_app.step4')}</h2>
             <div className="bg-highlight/10 border border-highlight rounded-lg p-6 text-center mb-8">
               <CheckCircle className="w-12 h-12 text-highlight mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-slate-800">Ready to Submit</h3>
+              <h3 className="text-lg font-bold text-slate-800">{t('new_app.ready_submit')}</h3>
               <p className="text-slate-600 mt-2">
                 Please review your application details. Once submitted, you will be directed to pay the application fee.
               </p>
@@ -386,10 +388,10 @@ export const NewApplicationPage: React.FC = () => {
 
             <div className="flex justify-between pt-6">
               <button onClick={() => setCurrentStep(3)} className="btn btn-outline">
-                <ChevronLeft className="w-4 h-4 mr-2" /> Previous
+                <ChevronLeft className="w-4 h-4 mr-2" /> {t('new_app.prev_step')}
               </button>
               <button onClick={onFinalSubmit} disabled={loading} className="btn btn-primary text-lg px-8">
-                {loading ? 'Submitting...' : 'Submit Application'}
+                {loading ? t('new_app.submitting') : t('new_app.submit_app')}
               </button>
             </div>
           </div>

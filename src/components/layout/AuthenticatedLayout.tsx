@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/authStore';
 import {
   Building2, LogOut, Menu, X, Bell, LayoutDashboard,
@@ -10,6 +11,7 @@ import { useNotificationStore } from '@/stores/notificationStore';
 export const AuthenticatedLayout: React.FC = () => {
   const { user, logout } = useAuthStore();
   const { unreadCount, notifications, fetchNotifications, markAsRead, markAllAsRead } = useNotificationStore();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -41,32 +43,32 @@ export const AuthenticatedLayout: React.FC = () => {
     switch (user?.role) {
       case 'APPLICANT':
         return [
-          { name: 'Dashboard', path: '/applicant/dashboard', icon: LayoutDashboard },
-          { name: 'My Applications', path: '/applicant/applications', icon: FileText },
-          { name: 'Profile & Vault', path: '/applicant/profile', icon: Users },
+          { name: 'sidebar.dashboard', path: '/applicant/dashboard', icon: LayoutDashboard },
+          { name: 'sidebar.my_applications', path: '/applicant/applications', icon: FileText },
+          { name: 'sidebar.profile_vault', path: '/applicant/profile', icon: Users },
         ];
       case 'REVIEW_OFFICER':
         return [
-          { name: 'Dashboard', path: '/reviewer/dashboard', icon: LayoutDashboard },
+          { name: 'sidebar.dashboard', path: '/reviewer/dashboard', icon: LayoutDashboard },
         ];
       case 'INSPECTOR':
         return [
-          { name: 'Dashboard', path: '/inspector/dashboard', icon: LayoutDashboard },
+          { name: 'sidebar.dashboard', path: '/inspector/dashboard', icon: LayoutDashboard },
         ];
       case 'SENIOR_OFFICER':
         return [
-          { name: 'Dashboard', path: '/senior/dashboard', icon: LayoutDashboard },
+          { name: 'sidebar.dashboard', path: '/senior/dashboard', icon: LayoutDashboard },
         ];
       case 'ADMIN':
         return [
-          { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
-          { name: 'Applications', path: '/admin/applications', icon: FileText },
-          { name: 'User Management', path: '/admin/users', icon: Users },
-          { name: 'Payments', path: '/admin/payments', icon: Banknote },
-          { name: 'Assignments', path: '/admin/assignments', icon: UserCheck },
-          { name: 'Config', path: '/admin/config', icon: Settings },
-          { name: 'Audit Log', path: '/admin/audit-log', icon: ClipboardList },
-          { name: 'Reports', path: '/admin/reports', icon: FileText },
+          { name: 'sidebar.dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
+          { name: 'sidebar.applications', path: '/admin/applications', icon: FileText },
+          { name: 'sidebar.user_management', path: '/admin/users', icon: Users },
+          { name: 'sidebar.payments', path: '/admin/payments', icon: Banknote },
+          { name: 'sidebar.assignments', path: '/admin/assignments', icon: UserCheck },
+          { name: 'sidebar.config', path: '/admin/config', icon: Settings },
+          { name: 'sidebar.audit_log', path: '/admin/audit-log', icon: ClipboardList },
+          { name: 'sidebar.reports', path: '/admin/reports', icon: FileText },
         ];
       default:
         return [];
@@ -120,7 +122,7 @@ export const AuthenticatedLayout: React.FC = () => {
                     onClick={() => setSidebarOpen(false)}
                   >
                     <Icon className={`w-4.5 h-4.5 ${isActive ? 'text-highlight' : 'text-slate-400'}`} />
-                    {item.name}
+                    {t(item.name)}
                   </Link>
                 </li>
               );
@@ -146,7 +148,7 @@ export const AuthenticatedLayout: React.FC = () => {
             className="flex items-center gap-3 w-full px-3 py-2.5 text-sm font-medium text-slate-500 hover:text-danger rounded-xl hover:bg-danger/5 transition-colors duration-200"
           >
             <LogOut className="w-4 h-4" />
-            Sign Out
+            {t('sidebar.sign_out')}
           </button>
         </div>
       </aside>
@@ -165,6 +167,12 @@ export const AuthenticatedLayout: React.FC = () => {
           <div className="flex-1" />
 
           <div className="flex items-center gap-2" ref={notifRef}>
+            <button
+              onClick={() => i18n.changeLanguage(i18n.language === 'am' ? 'en' : 'am')}
+              className="px-3 py-1 text-sm font-medium text-slate-600 hover:text-primary border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              {i18n.language === 'am' ? 'EN' : 'አማ'}
+            </button>
             <div className="relative">
               <button 
                 onClick={() => setShowNotif(!showNotif)}
@@ -180,13 +188,13 @@ export const AuthenticatedLayout: React.FC = () => {
               {showNotif && (
                 <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden z-50">
                   <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
-                    <h3 className="font-bold text-slate-800">Notifications</h3>
+                    <h3 className="font-bold text-slate-800">{t('header.notifications')}</h3>
                     {unreadCount > 0 && (
                       <button 
                         onClick={markAllAsRead}
                         className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
                       >
-                        Mark all as read
+                        {t('header.mark_all_read')}
                       </button>
                     )}
                   </div>
@@ -195,7 +203,7 @@ export const AuthenticatedLayout: React.FC = () => {
                     {notifications.length === 0 ? (
                       <div className="p-6 text-center text-slate-500 text-sm">
                         <Bell className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-                        No notifications yet
+                        {t('header.no_notifications')}
                       </div>
                     ) : (
                       <div className="divide-y divide-slate-100">
@@ -208,9 +216,12 @@ export const AuthenticatedLayout: React.FC = () => {
                               setShowNotif(false);
                             }}
                           >
-                            <p className={`text-sm ${!notif.is_read ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>
-                              {notif.message}
+                            <p className={`text-sm font-medium ${!notif.is_read ? 'text-slate-800' : 'text-slate-600'}`}>
+                              {notif.title}
                             </p>
+                            {notif.body && (
+                              <p className="text-xs text-slate-500 mt-0.5">{notif.body}</p>
+                            )}
                             <span className="text-xs text-slate-400 mt-1 block">
                               {new Date(notif.created_at).toLocaleString()}
                             </span>

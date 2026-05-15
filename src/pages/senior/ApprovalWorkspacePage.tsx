@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { approvalsApi } from '@/services/api/approvals';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { StatusBadge } from '@/components/common/StatusBadge';
@@ -13,6 +14,7 @@ import { format, parseISO } from 'date-fns';
 type ActionModal = null | 'consent' | 'permit' | 'reject' | 'sendback';
 
 export const ApprovalWorkspacePage: React.FC = () => {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -103,9 +105,9 @@ export const ApprovalWorkspacePage: React.FC = () => {
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-slate-800">Final Approval: {appData.arn}</h1>
+          <h1 className="text-2xl font-bold text-slate-800">{t('senior.final_approval')} {appData.arn}</h1>
           <p className="text-slate-500 text-sm mt-1">
-            {appData.applicant_name} · Cat {appData.building_category} · {appData.intended_use}
+            {appData.applicant_name} · {t('senior.cat')} {appData.building_category} · {appData.intended_use}
           </p>
         </div>
         <StatusBadge status={appData.status} size="md" />
@@ -115,25 +117,25 @@ export const ApprovalWorkspacePage: React.FC = () => {
       <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
         <CheckSquare className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
         <div>
-          <p className="font-semibold text-green-800">Technical Review Sign-off</p>
+          <p className="font-semibold text-green-800">{t('senior.sign_off')}</p>
           <p className="text-sm text-green-700 mt-0.5">
-            Reviewed by <strong>{appData.reviewer_name || 'Assigned Officer'}</strong>.
-            All submitted documents meet the applicable building code requirements.
-            Recommendation: <strong>Approve</strong>.
+            {t('senior.reviewed_by')} <strong>{appData.reviewer_name || t('senior.assigned_officer')}</strong>.
+            {t('senior.sign_off_desc')}
+            {t('senior.recommendation')}
           </p>
         </div>
       </div>
 
       {/* Action buttons */}
       <div className="card p-5 flex flex-wrap gap-3 items-center">
-        <span className="text-sm font-semibold text-slate-600 mr-1">Actions:</span>
+        <span className="text-sm font-semibold text-slate-600 mr-1">{t('senior.actions_label')}</span>
 
         {!consentIssued && (
           <button
             onClick={() => setModal('consent')}
             className="btn text-sm py-2 px-4 bg-green-600 text-white hover:bg-green-700 font-medium rounded-xl gap-2"
           >
-            <CheckCircle className="w-4 h-4" /> Issue Planning Consent
+            <CheckCircle className="w-4 h-4" /> {t('senior.issue_consent')}
           </button>
         )}
 
@@ -142,7 +144,7 @@ export const ApprovalWorkspacePage: React.FC = () => {
             onClick={() => setModal('permit')}
             className="btn text-sm py-2 px-4 bg-primary text-white hover:bg-primary/90 font-medium rounded-xl gap-2"
           >
-            <FileText className="w-4 h-4" /> Issue Construction Permit
+            <FileText className="w-4 h-4" /> {t('senior.issue_permit')}
           </button>
         )}
 
@@ -150,24 +152,24 @@ export const ApprovalWorkspacePage: React.FC = () => {
           onClick={() => setModal('sendback')}
           className="btn btn-outline text-sm py-2 px-4 gap-2"
         >
-          <Send className="w-4 h-4" /> Send Back to Reviewer
+          <Send className="w-4 h-4" /> {t('senior.send_back')}
         </button>
 
         <button
           onClick={() => setModal('reject')}
           className="btn btn-outline text-danger border-danger hover:bg-danger/10 text-sm py-2 px-4 gap-2"
         >
-          <XCircle className="w-4 h-4" /> Reject Application
+          <XCircle className="w-4 h-4" /> {t('senior.reject_app')}
         </button>
       </div>
 
       {/* Tabs */}
       <div className="flex space-x-1 bg-slate-100 p-1 rounded-xl overflow-x-auto w-fit">
         {([
-          { key: 'details', label: 'Details', icon: Building },
-          { key: 'documents', label: `Documents (${docs.length})`, icon: FileText },
-          { key: 'comments', label: `Comments (${comments.length})`, icon: MessageSquare },
-          { key: 'history', label: 'History', icon: Clock },
+          { key: 'details', label: t('senior.details'), icon: Building },
+          { key: 'documents', label: `${t('senior.documents')} (${docs.length})`, icon: FileText },
+          { key: 'comments', label: `${t('senior.comments')} (${comments.length})`, icon: MessageSquare },
+          { key: 'history', label: t('senior.history'), icon: Clock },
         ] as const).map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -186,22 +188,22 @@ export const ApprovalWorkspacePage: React.FC = () => {
         {activeTab === 'details' && (
           <div className="space-y-6">
             <div>
-              <h3 className="font-semibold text-slate-700 mb-3 border-b pb-2">Building Information</h3>
+              <h3 className="font-semibold text-slate-700 mb-3 border-b pb-2">{t('senior.building_info')}</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
                 {[
-                  ['Applicant', appData.applicant_name],
-                  ['Category', `Category ${appData.building_category}`],
-                  ['Intended Use', appData.intended_use],
-                  ['Project Value', `${(appData.project_value_etb || 0).toLocaleString()} ETB`],
-                  ['Address', appData.plot_address],
-                  ['Subcity / Woreda', `${appData.subcity_id} / ${appData.woreda}`],
-                  ['Height / Area', `${appData.height_m}m / ${appData.floor_area_sqm} sqm`],
-                  ['Floors (Above/Below)', `${appData.floors_above} / ${appData.floors_below}`],
-                  ['Architect', `${appData.architect_name} (${appData.architect_license})`],
+                  [t('senior.applicant'), appData.applicant_name],
+                  [t('senior.category'), `${t('senior.category')} ${appData.building_category}`],
+                  [t('senior.intended_use'), appData.intended_use],
+                  [t('senior.project_value'), `${(appData.project_value_etb || 0).toLocaleString()} ETB`],
+                  [t('senior.address'), appData.plot_address],
+                  [t('senior.subcity_woreda'), `${appData.subcity_id} / ${appData.woreda}`],
+                  [t('senior.height_area'), `${appData.height_m}m / ${appData.floor_area_sqm} sqm`],
+                  [t('senior.floors_above_below'), `${appData.floors_above} / ${appData.floors_below}`],
+                  [t('senior.architect'), `${appData.architect_name} (${appData.architect_license})`],
                 ].map(([label, val]) => (
                   <div key={label}>
                     <p className="text-xs text-slate-500 uppercase tracking-wider">{label}</p>
-                    <p className="font-medium text-slate-800 mt-0.5">{val || 'N/A'}</p>
+                    <p className="font-medium text-slate-800 mt-0.5">{val || t('senior.na')}</p>
                   </div>
                 ))}
               </div>
@@ -210,7 +212,7 @@ export const ApprovalWorkspacePage: React.FC = () => {
             {neighbors.length > 0 && (
               <div>
                 <h3 className="font-semibold text-slate-700 mb-3 border-b pb-2 flex items-center gap-2">
-                  <Users className="w-4 h-4" /> Neighbor Consents ({neighbors.length})
+                  <Users className="w-4 h-4" /> {t('senior.neighbor_consents')} ({neighbors.length})
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {neighbors.map((n: any, i: number) => (
@@ -231,7 +233,7 @@ export const ApprovalWorkspacePage: React.FC = () => {
         {/* Documents */}
         {activeTab === 'documents' && (
           <div className="space-y-3">
-            {docs.length === 0 && <p className="text-slate-400 italic text-sm">No documents found.</p>}
+            {docs.length === 0 && <p className="text-slate-400 italic text-sm">{t('senior.no_docs')}</p>}
             {docs.map((doc: any) => (
               <div key={doc.document_id} className="flex items-center justify-between bg-slate-50 rounded-xl border border-slate-200 p-4">
                 <div className="flex items-center gap-3">
@@ -249,7 +251,7 @@ export const ApprovalWorkspacePage: React.FC = () => {
                     doc.validation_status === 'REJECTED' ? 'bg-red-100 text-red-700' :
                     'bg-yellow-100 text-yellow-700'
                   }`}>
-                    {doc.validation_status || 'PENDING'}
+                    {doc.validation_status || t('senior.pending')}
                   </span>
                   <button className="p-1.5 text-slate-400 hover:text-primary rounded-lg hover:bg-slate-100">
                     <Download className="w-4 h-4" />
@@ -263,7 +265,7 @@ export const ApprovalWorkspacePage: React.FC = () => {
         {/* Comments */}
         {activeTab === 'comments' && (
           <div className="space-y-3">
-            {comments.length === 0 && <p className="text-slate-400 italic text-sm">No comments on this application.</p>}
+            {comments.length === 0 && <p className="text-slate-400 italic text-sm">{t('senior.no_comments')}</p>}
             {comments.map((c: any) => (
               <div
                 key={c.comment_id}
@@ -289,7 +291,7 @@ export const ApprovalWorkspacePage: React.FC = () => {
         {/* History */}
         {activeTab === 'history' && (
           <div className="space-y-4 pl-4 border-l-2 border-slate-200 ml-2 py-2">
-            {history.length === 0 && <p className="text-slate-400 italic text-sm">No history events.</p>}
+            {history.length === 0 && <p className="text-slate-400 italic text-sm">{t('senior.no_history')}</p>}
             {history.map((event: any, idx: number) => (
               <div key={idx} className="relative pl-6">
                 <div className="absolute -left-[35px] top-1 w-4 h-4 rounded-full bg-primary ring-4 ring-white" />
@@ -298,7 +300,7 @@ export const ApprovalWorkspacePage: React.FC = () => {
                 </p>
                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
                   <p className="font-medium text-slate-800 text-sm">
-                    Status → <span className="text-primary">{event.new_status}</span>
+                    {t('senior.status_arrow')} <span className="text-primary">{event.new_status}</span>
                   </p>
                   {event.note && <p className="text-xs text-slate-500 mt-1">{event.note}</p>}
                 </div>
@@ -318,15 +320,13 @@ export const ApprovalWorkspacePage: React.FC = () => {
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
-              <h2 className="text-xl font-bold text-slate-800">Issue Planning Consent?</h2>
-              <p className="text-slate-500 text-sm mt-2">
-                This will issue a <strong>Planning Consent document</strong> with a QR code and notify the applicant. The application will move to payment stage.
-              </p>
+              <h2 className="text-xl font-bold text-slate-800">{t('senior.issue_consent_q')}</h2>
+              <p className="text-slate-500 text-sm mt-2">{t('senior.issue_consent_desc')}</p>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setModal(null)} className="btn btn-outline flex-1">Cancel</button>
+              <button onClick={() => setModal(null)} className="btn btn-outline flex-1">{t('senior.cancel')}</button>
               <button onClick={handleIssueConsent} disabled={submitting} className="btn flex-1 bg-green-600 text-white hover:bg-green-700 font-medium rounded-xl py-2.5">
-                {submitting ? 'Issuing...' : 'Issue Consent'}
+                {submitting ? t('senior.issuing') : t('senior.issue_consent')}
               </button>
             </div>
           </div>
@@ -341,15 +341,13 @@ export const ApprovalWorkspacePage: React.FC = () => {
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
                 <FileText className="w-8 h-8 text-primary" />
               </div>
-              <h2 className="text-xl font-bold text-slate-800">Issue Construction Permit?</h2>
-              <p className="text-slate-500 text-sm mt-2">
-                This will generate and issue the official <strong>Construction Permit PDF</strong> with QR code. The permit will be immediately verifiable at <code>/verify</code>.
-              </p>
+              <h2 className="text-xl font-bold text-slate-800">{t('senior.issue_permit_q')}</h2>
+              <p className="text-slate-500 text-sm mt-2">{t('senior.issue_permit_desc')}</p>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setModal(null)} className="btn btn-outline flex-1">Cancel</button>
+              <button onClick={() => setModal(null)} className="btn btn-outline flex-1">{t('senior.cancel')}</button>
               <button onClick={handleIssuePermit} disabled={submitting} className="btn btn-primary flex-1">
-                {submitting ? 'Issuing...' : 'Issue Permit'}
+                {submitting ? t('senior.issuing') : t('senior.issue_permit')}
               </button>
             </div>
           </div>
@@ -360,37 +358,37 @@ export const ApprovalWorkspacePage: React.FC = () => {
       {modal === 'reject' && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6">
-            <h2 className="text-xl font-bold text-slate-800 mb-1">Reject Application</h2>
-            <p className="text-sm text-slate-500 mb-5">This action is final. The applicant will be notified with your reason.</p>
+            <h2 className="text-xl font-bold text-slate-800 mb-1">{t('senior.reject_app')}</h2>
+            <p className="text-sm text-slate-500 mb-5">{t('senior.reject_app_desc')}</p>
             <div className="space-y-4">
               <div>
-                <label className="label">Rejection Reason <span className="text-red-500">*</span></label>
+                <label className="label">{t('senior.rejection_reason')} <span className="text-red-500">*</span></label>
                 <textarea
                   value={rejectReason}
                   onChange={e => setRejectReason(e.target.value)}
                   rows={4}
-                  placeholder="Provide a comprehensive reason (min 50 characters)..."
+                  placeholder={t('senior.reject_placeholder')}
                   className="input-field"
                 />
                 <p className={`text-xs mt-1 ${rejectReason.length < 50 ? 'text-orange-500' : 'text-green-600'}`}>
-                  {rejectReason.length}/50 characters minimum
+                  {rejectReason.length}/50 {t('senior.chars_min')}
                 </p>
               </div>
               <div>
-                <label className="label">Regulation Citation <span className="text-red-500">*</span></label>
+                <label className="label">{t('senior.regulation_citation')} <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   value={rejectCitation}
                   onChange={e => setRejectCitation(e.target.value)}
-                  placeholder="e.g. EBCS 2, Section 4.3.1"
+                  placeholder={t('senior.citation_placeholder')}
                   className="input-field"
                 />
               </div>
             </div>
             <div className="flex gap-3 mt-5">
-              <button onClick={() => setModal(null)} className="btn btn-outline flex-1">Cancel</button>
+              <button onClick={() => setModal(null)} className="btn btn-outline flex-1">{t('senior.cancel')}</button>
               <button onClick={handleReject} disabled={submitting} className="btn flex-1 bg-red-600 text-white hover:bg-red-700 font-medium rounded-xl py-2.5">
-                {submitting ? 'Rejecting...' : 'Confirm Rejection'}
+                {submitting ? t('senior.rejecting') : t('senior.confirm_rejection')}
               </button>
             </div>
           </div>
@@ -401,22 +399,22 @@ export const ApprovalWorkspacePage: React.FC = () => {
       {modal === 'sendback' && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
-            <h2 className="text-xl font-bold text-slate-800 mb-1">Send Back to Reviewer</h2>
-            <p className="text-sm text-slate-500 mb-4">The assigned technical reviewer will be notified with your instructions.</p>
+            <h2 className="text-xl font-bold text-slate-800 mb-1">{t('senior.send_back')}</h2>
+            <p className="text-sm text-slate-500 mb-4">{t('senior.send_back_desc')}</p>
             <div>
-              <label className="label">Instructions for Reviewer <span className="text-red-500">*</span></label>
+              <label className="label">{t('senior.instructions_reviewer')} <span className="text-red-500">*</span></label>
               <textarea
                 value={sendbackInstructions}
                 onChange={e => setSendbackInstructions(e.target.value)}
                 rows={4}
-                placeholder="What should the reviewer check or follow up on?"
+                placeholder={t('senior.instructions_placeholder')}
                 className="input-field"
               />
             </div>
             <div className="flex gap-3 mt-5">
-              <button onClick={() => setModal(null)} className="btn btn-outline flex-1">Cancel</button>
+              <button onClick={() => setModal(null)} className="btn btn-outline flex-1">{t('senior.cancel')}</button>
               <button onClick={handleSendBack} disabled={submitting} className="btn btn-primary flex-1">
-                {submitting ? 'Sending...' : 'Send Back'}
+                {submitting ? t('senior.sending') : t('senior.send_back_btn')}
               </button>
             </div>
           </div>

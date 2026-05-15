@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -17,6 +18,7 @@ const commenceSchema = z.object({
 });
 
 export const CommencePage: React.FC = () => {
+  const { t } = useTranslation();
   const { applicationId } = useParams<{ applicationId: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -44,20 +46,20 @@ export const CommencePage: React.FC = () => {
         <div className="flex items-center justify-center w-16 h-16 bg-primary/10 text-primary rounded-full mb-6 mx-auto">
           <HardHat className="w-8 h-8" />
         </div>
-        <h1 className="text-2xl font-bold text-center text-slate-800 mb-8">Commence Construction</h1>
+        <h1 className="text-2xl font-bold text-center text-slate-800 mb-8">{t('construction.commence_title')}</h1>
         
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div><label className="label">Start Date</label><input type="date" {...register('start_date')} className="input-field" /></div>
+          <div><label className="label">{t('construction.start_date')}</label><input type="date" {...register('start_date')} className="input-field" /></div>
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="label">Contractor Name</label><input type="text" {...register('contractor_name')} className="input-field" /></div>
-            <div><label className="label">Contractor License</label><input type="text" {...register('contractor_license')} className="input-field" /></div>
+            <div><label className="label">{t('construction.contractor_name')}</label><input type="text" {...register('contractor_name')} className="input-field" /></div>
+            <div><label className="label">{t('construction.contractor_license')}</label><input type="text" {...register('contractor_license')} className="input-field" /></div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="label">Supervisor Name</label><input type="text" {...register('supervisor_name')} className="input-field" /></div>
-            <div><label className="label">Supervisor Phone</label><input type="text" {...register('supervisor_phone')} className="input-field" /></div>
+            <div><label className="label">{t('construction.supervisor_name')}</label><input type="text" {...register('supervisor_name')} className="input-field" /></div>
+            <div><label className="label">{t('construction.supervisor_phone')}</label><input type="text" {...register('supervisor_phone')} className="input-field" /></div>
           </div>
           <button type="submit" disabled={loading} className="btn btn-primary w-full py-3">
-            Submit Declaration
+            {t('construction.submit_declaration')}
           </button>
         </form>
       </div>
@@ -66,6 +68,7 @@ export const CommencePage: React.FC = () => {
 };
 
 export const DeclareCompletionPage: React.FC = () => {
+  const { t } = useTranslation();
   const { applicationId } = useParams<{ applicationId: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -99,13 +102,13 @@ export const DeclareCompletionPage: React.FC = () => {
         <div className="flex items-center justify-center w-16 h-16 bg-green-100 text-green-600 rounded-full mb-6 mx-auto">
           <CheckSquare className="w-8 h-8" />
         </div>
-        <h1 className="text-2xl font-bold text-center text-slate-800 mb-8">Declare Completion</h1>
+        <h1 className="text-2xl font-bold text-center text-slate-800 mb-8">{t('construction.declare_title')}</h1>
         
         <form onSubmit={onSubmit} className="space-y-6">
-          <div><label className="label">Completion Date</label><input type="date" required value={date} onChange={e => setDate(e.target.value)} className="input-field" /></div>
+          <div><label className="label">{t('construction.completion_date')}</label><input type="date" required value={date} onChange={e => setDate(e.target.value)} className="input-field" /></div>
           <div>
-            <label className="label">Upload Photos (Min 5)</label>
-            <p className="text-sm text-slate-500 mb-2">Upload photos from at least 4 angles.</p>
+            <label className="label">{t('construction.upload_photos')}</label>
+            <p className="text-sm text-slate-500 mb-2">{t('construction.upload_photos_desc')}</p>
             <FileUploader 
               onUpload={setPhotos} 
               acceptedTypes={['image/jpeg', 'image/png']} 
@@ -114,7 +117,7 @@ export const DeclareCompletionPage: React.FC = () => {
             />
           </div>
           <button type="submit" disabled={loading} className="btn btn-primary w-full py-3">
-            Request Final Inspection
+            {t('construction.request_inspection')}
           </button>
         </form>
       </div>

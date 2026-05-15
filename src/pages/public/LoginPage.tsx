@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useForm as useHookForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -16,6 +17,7 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export const LoginPage: React.FC = () => {
+  const { t } = useTranslation();
   const { login } = useAuthStore();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
@@ -67,14 +69,14 @@ export const LoginPage: React.FC = () => {
         <div className="bg-primary px-8 py-10 text-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-full bg-primary opacity-10" />
           <Building2 className="w-12 h-12 text-highlight mx-auto mb-4 relative z-10" />
-          <h2 className="text-3xl font-bold text-white relative z-10">Welcome Back</h2>
-          <p className="text-slate-300 mt-2 relative z-10">Sign in to your ACPS account</p>
+          <h2 className="text-3xl font-bold text-white relative z-10">{t('auth.login_title')}</h2>
+          <p className="text-slate-300 mt-2 relative z-10">{t('auth.login_subtitle')}</p>
         </div>
 
         <div className="p-8">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div>
-              <label className="label">Email Address</label>
+              <label className="label">{t('auth.email_label')}</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Mail className="h-5 w-5 text-slate-400" />
@@ -83,14 +85,14 @@ export const LoginPage: React.FC = () => {
                   type="email"
                   {...register('email')}
                   className={`input-field pl-10 ${errors.email ? 'border-danger focus:ring-danger' : ''}`}
-                  placeholder="name@example.com"
+                  placeholder={t('auth.email_placeholder')}
                 />
               </div>
               {errors.email && <p className="text-danger text-xs mt-1">{errors.email.message}</p>}
             </div>
 
             <div>
-              <label className="label">Password</label>
+              <label className="label">{t('auth.password_label')}</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-slate-400" />
@@ -99,7 +101,7 @@ export const LoginPage: React.FC = () => {
                   type="password"
                   {...register('password')}
                   className={`input-field pl-10 ${errors.password ? 'border-danger focus:ring-danger' : ''}`}
-                  placeholder="••••••••"
+                  placeholder={t('auth.password_placeholder')}
                 />
               </div>
               {errors.password && <p className="text-danger text-xs mt-1">{errors.password.message}</p>}
@@ -114,13 +116,13 @@ export const LoginPage: React.FC = () => {
                   className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded cursor-pointer"
                 />
                 <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-700 cursor-pointer">
-                  Remember me
+                  {t('auth.remember_me')}
                 </label>
               </div>
 
               <div className="text-sm">
                 <Link to="/forgot-password" className="font-medium text-warning hover:text-warning/80">
-                  Forgot your password?
+                  {t('auth.forgot_password')}
                 </Link>
               </div>
             </div>
@@ -130,15 +132,15 @@ export const LoginPage: React.FC = () => {
               disabled={isLoading}
               className="w-full btn btn-primary py-3 text-lg"
             >
-              {isLoading ? 'Signing in...' : 'Sign in'}
+              {isLoading ? t('auth.signing_in') : t('auth.sign_in')}
             </button>
           </form>
 
           <div className="mt-8 text-center">
             <p className="text-sm text-slate-600">
-              Don't have an account?{' '}
+              {t('auth.no_account')}{' '}
               <Link to="/register" className="font-medium text-primary hover:underline">
-                Register here
+                {t('auth.register_here')}
               </Link>
             </p>
           </div>

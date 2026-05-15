@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -21,6 +22,7 @@ const registerSchema = z.object({
 type RegisterForm = z.infer<typeof registerSchema>;
 
 export const RegisterPage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -57,15 +59,15 @@ export const RegisterPage: React.FC = () => {
               <CheckCircle2 className="w-8 h-8 text-green-600" />
             </div>
           </div>
-          <h2 className="text-2xl font-bold text-slate-800">Account Created!</h2>
+          <h2 className="text-2xl font-bold text-slate-800">{t('auth.account_created')}</h2>
           <p className="text-slate-600">
-            We've sent a verification email to your address. Please verify your account to continue.
+            {t('auth.verify_email_msg')}
           </p>
           <button 
             onClick={() => navigate('/login')} 
             className="btn btn-primary w-full justify-center mt-4"
           >
-            Go to Login
+            {t('auth.go_to_login')}
           </button>
         </div>
       </div>
@@ -81,65 +83,65 @@ export const RegisterPage: React.FC = () => {
               <UserPlus className="w-6 h-6 text-primary" />
             </div>
           </div>
-          <h2 className="text-3xl font-extrabold text-slate-800">Create Account</h2>
+          <h2 className="text-3xl font-extrabold text-slate-800">{t('auth.register_title')}</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Register to apply for construction permits
+            {t('auth.register_subtitle')}
           </p>
         </div>
 
         <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-4">
             <div>
-              <label className="label">Full Name</label>
+              <label className="label">{t('auth.full_name_label')}</label>
               <input 
                 {...register('full_name')} 
                 type="text" 
                 className={`input-field ${errors.full_name ? 'border-danger focus:ring-danger' : ''}`}
-                placeholder="John Doe"
+                placeholder={t('auth.full_name_placeholder')}
               />
               {errors.full_name && <p className="text-danger text-xs mt-1">{errors.full_name.message}</p>}
             </div>
 
             <div>
-              <label className="label">Email Address</label>
+              <label className="label">{t('auth.email_label')}</label>
               <input 
                 {...register('email')} 
                 type="email" 
                 className={`input-field ${errors.email ? 'border-danger focus:ring-danger' : ''}`}
-                placeholder="john@example.com"
+                placeholder={t('auth.email_placeholder')}
               />
               {errors.email && <p className="text-danger text-xs mt-1">{errors.email.message}</p>}
             </div>
 
             <div>
-              <label className="label">Phone Number</label>
+              <label className="label">{t('auth.phone_label')}</label>
               <input 
                 {...register('phone')} 
                 type="tel" 
                 className={`input-field ${errors.phone ? 'border-danger focus:ring-danger' : ''}`}
-                placeholder="+251 911 234 567"
+                placeholder={t('auth.phone_placeholder')}
               />
               {errors.phone && <p className="text-danger text-xs mt-1">{errors.phone.message}</p>}
             </div>
 
             <div>
-              <label className="label">Password</label>
+              <label className="label">{t('auth.password_label')}</label>
               <input 
                 {...register('password')} 
                 type="password" 
                 className={`input-field ${errors.password ? 'border-danger focus:ring-danger' : ''}`}
-                placeholder="••••••••"
+                placeholder={t('auth.password_placeholder')}
               />
               {errors.password && <p className="text-danger text-xs mt-1">{errors.password.message}</p>}
             </div>
 
             <div>
-              <label className="label">Confirm Password</label>
+              <label className="label">{t('auth.confirm_password_label')}</label>
               <input 
                 {...register('confirm_password')} 
                 type="password" 
                 className={`input-field ${errors.confirm_password ? 'border-danger focus:ring-danger' : ''}`}
-                placeholder="••••••••"
+                placeholder={t('auth.password_placeholder')}
               />
               {errors.confirm_password && <p className="text-danger text-xs mt-1">{errors.confirm_password.message}</p>}
             </div>
@@ -150,9 +152,9 @@ export const RegisterPage: React.FC = () => {
             disabled={loading}
             className="w-full btn btn-primary flex justify-center py-3"
           >
-            {loading ? 'Creating Account...' : (
+            {loading ? t('auth.creating_account') : (
               <>
-                Create Account <ArrowRight className="ml-2 w-5 h-5" />
+                {t('auth.create_account')} <ArrowRight className="ml-2 w-5 h-5" />
               </>
             )}
           </button>
@@ -160,9 +162,9 @@ export const RegisterPage: React.FC = () => {
 
         <div className="text-center">
           <p className="text-sm text-slate-600">
-            Already have an account?{' '}
+            {t('auth.has_account')}{' '}
             <Link to="/login" className="font-medium text-primary hover:text-primary/80 transition-colors">
-              Sign in
+              {t('auth.sign_in')}
             </Link>
           </p>
         </div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { adminApi } from '@/services/api/admin';
-import { applicationsApi } from '@/services/api/applications';
+// import { applicationsApi } from '@/services/api/applications';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { DataTable } from '@/components/tables/DataTable';
 import type { ColumnDef } from '@/components/tables/DataTable';

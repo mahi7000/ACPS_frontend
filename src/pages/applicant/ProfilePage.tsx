@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { useAuthStore } from '@/stores/authStore';
 import { apiClient } from '@/services/api/client';
@@ -8,6 +9,7 @@ import { FileUploader } from '@/components/forms/FileUploader';
 import { format } from 'date-fns';
 
 export const ProfilePage: React.FC = () => {
+  const { t } = useTranslation();
   const { user, setUser } = useAuthStore();
   const [activeTab, setActiveTab] = useState('personal');
   const [documents, setDocuments] = useState<any[]>([]);
@@ -69,7 +71,7 @@ export const ProfilePage: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold text-primary">Profile & Document Vault</h1>
+      <h1 className="text-2xl font-bold text-primary">{t('profile.title')}</h1>
 
       <div className="flex space-x-1 bg-slate-100 p-1 rounded-lg">
         <button
@@ -80,7 +82,7 @@ export const ProfilePage: React.FC = () => {
         >
           <div className="flex items-center justify-center">
             <User className="w-4 h-4 mr-2" />
-            Personal Info
+            {t('profile.personal_info')}
           </div>
         </button>
         <button
@@ -91,7 +93,7 @@ export const ProfilePage: React.FC = () => {
         >
           <div className="flex items-center justify-center">
             <Shield className="w-4 h-4 mr-2" />
-            Verification Docs
+            {t('profile.verification_docs')}
           </div>
         </button>
         <button
@@ -102,7 +104,7 @@ export const ProfilePage: React.FC = () => {
         >
           <div className="flex items-center justify-center">
             <FileText className="w-4 h-4 mr-2" />
-            Document Vault
+            {t('profile.document_vault')}
           </div>
         </button>
       </div>
@@ -111,27 +113,27 @@ export const ProfilePage: React.FC = () => {
         {activeTab === 'personal' && (
           <form onSubmit={handleSubmit(onProfileSubmit)} className="space-y-6 max-w-xl">
             <div>
-              <label className="label">Full Name</label>
+              <label className="label">{t('profile.full_name')}</label>
               <input type="text" {...register('full_name')} className="input-field" />
             </div>
             <div>
-              <label className="label">Phone Number</label>
+              <label className="label">{t('profile.phone')}</label>
               <input type="tel" {...register('phone')} className="input-field" />
             </div>
             <div>
-              <label className="label">Email Address</label>
+              <label className="label">{t('profile.email')}</label>
               <input type="email" value={user?.email} disabled className="input-field bg-slate-100" />
             </div>
             <div>
-              <label className="label">Subcity</label>
+              <label className="label">{t('profile.subcity')}</label>
               <input type="text" {...register('subcity_id')} className="input-field" />
             </div>
             <div>
-              <label className="label">TIN Number</label>
+              <label className="label">{t('profile.tin')}</label>
               <input type="text" {...register('tin')} className="input-field" />
             </div>
             <button type="submit" disabled={loading} className="btn btn-primary">
-              {loading ? 'Saving...' : 'Save Changes'}
+              {loading ? t('profile.saving') : t('profile.save_changes')}
             </button>
           </form>
         )}
@@ -140,7 +142,7 @@ export const ProfilePage: React.FC = () => {
           <div className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
-                <h3 className="text-lg font-medium text-slate-800 mb-4">National ID / Passport</h3>
+                <h3 className="text-lg font-medium text-slate-800 mb-4">{t('profile.national_id')}</h3>
                 <FileUploader 
                   onUpload={(files) => handleDocumentUpload(files, 'NATIONAL_ID')} 
                   acceptedTypes={['application/pdf']} 
@@ -148,7 +150,7 @@ export const ProfilePage: React.FC = () => {
                 />
               </div>
               <div>
-                <h3 className="text-lg font-medium text-slate-800 mb-4">TIN Certificate</h3>
+                <h3 className="text-lg font-medium text-slate-800 mb-4">{t('profile.tin_cert')}</h3>
                 <FileUploader 
                   onUpload={(files) => handleDocumentUpload(files, 'TIN_CERTIFICATE')} 
                   acceptedTypes={['application/pdf']} 
@@ -165,11 +167,11 @@ export const ProfilePage: React.FC = () => {
               <table className="w-full text-left text-sm text-slate-600">
                 <thead className="bg-slate-50 text-slate-700 uppercase font-medium border-b border-slate-200">
                   <tr>
-                    <th className="px-4 py-3">Document Type</th>
-                    <th className="px-4 py-3">File Name</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Version</th>
-                    <th className="px-4 py-3">Uploaded Date</th>
+                    <th className="px-4 py-3">{t('profile.doc_type')}</th>
+                    <th className="px-4 py-3">{t('profile.file_name')}</th>
+                    <th className="px-4 py-3">{t('profile.status')}</th>
+                    <th className="px-4 py-3">{t('profile.version')}</th>
+                    <th className="px-4 py-3">{t('profile.uploaded_date')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -193,7 +195,7 @@ export const ProfilePage: React.FC = () => {
                   {documents.length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
-                        No documents found in your vault.
+                        {t('profile.no_docs')}
                       </td>
                     </tr>
                   )}

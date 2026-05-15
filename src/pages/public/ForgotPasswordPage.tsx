@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Link } from 'react-router-dom';
@@ -14,6 +15,7 @@ const forgotPasswordSchema = z.object({
 type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
 
 export const ForgotPasswordPage: React.FC = () => {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -45,25 +47,25 @@ export const ForgotPasswordPage: React.FC = () => {
           <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
             <KeyRound className="w-8 h-8" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-800">Forgot Password</h2>
+          <h2 className="text-2xl font-bold text-slate-800">{t('auth.forgot_title')}</h2>
           <p className="text-slate-500 mt-2">
-            Enter your email address and we'll send you a link to reset your password.
+            {t('auth.forgot_subtitle')}
           </p>
         </div>
 
         {isSuccess ? (
           <div className="text-center space-y-6">
             <div className="bg-green-50 text-green-700 p-4 rounded-md text-sm border border-green-200">
-              Check your email for the reset link. If you don't see it, check your spam folder.
+              {t('auth.forgot_success')}
             </div>
             <Link to="/login" className="btn btn-outline w-full py-3">
-              Return to Login
+              {t('auth.return_login')}
             </Link>
           </div>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div>
-              <label className="label">Email Address</label>
+              <label className="label">{t('auth.email_label')}</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Mail className="h-5 w-5 text-slate-400" />
@@ -72,7 +74,7 @@ export const ForgotPasswordPage: React.FC = () => {
                   type="email"
                   {...register('email')}
                   className={`input-field pl-10 ${errors.email ? 'border-danger focus:ring-danger' : ''}`}
-                  placeholder="name@example.com"
+                  placeholder={t('auth.email_placeholder')}
                 />
               </div>
               {errors.email && <p className="text-danger text-xs mt-1">{errors.email.message}</p>}
@@ -83,13 +85,13 @@ export const ForgotPasswordPage: React.FC = () => {
               disabled={isLoading}
               className="w-full btn btn-primary py-3"
             >
-              {isLoading ? 'Sending...' : 'Send Reset Link'}
+              {isLoading ? t('auth.sending') : t('auth.send_reset_link')}
             </button>
 
             <div className="text-center">
               <Link to="/login" className="inline-flex items-center text-sm font-medium text-slate-600 hover:text-primary">
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Login
+                {t('auth.back_login')}
               </Link>
             </div>
           </form>
