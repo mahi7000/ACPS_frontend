@@ -73,23 +73,34 @@ export const UserManagementPage: React.FC = () => {
   };
 
   const handleAddOfficer = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      const payload = { ...formData };
-      if (!payload.initial_password) delete payload.initial_password;
-      
-      await adminApi.createOfficer(payload);
-      toast.success('Officer created successfully');
-      setIsModalOpen(false);
-      fetchUsers();
-      setFormData({ full_name: '', email: '', phone: '', role: 'REVIEW_OFFICER', subcity_id: '1', initial_password: '' });
-    } catch (err) {
-      toast.error('Failed to create officer');
-    } finally {
-      setIsSubmitting(false);
+  e.preventDefault();
+  setIsSubmitting(true);
+  try {
+    // Build payload without the initial_password if it's empty
+    const payload: any = {
+      full_name: formData.full_name,
+      email: formData.email,
+      phone: formData.phone,
+      role: formData.role,
+      subcity_id: formData.subcity_id,
+    };
+    
+    // Only add initial_password if it has a value
+    if (formData.initial_password.trim()) {
+      payload.initial_password = formData.initial_password;
     }
-  };
+    
+    await adminApi.createOfficer(payload);
+    toast.success('Officer created successfully');
+    setIsModalOpen(false);
+    fetchUsers();
+    setFormData({ full_name: '', email: '', phone: '', role: 'REVIEW_OFFICER', subcity_id: '1', initial_password: '' });
+  } catch (err) {
+    toast.error('Failed to create officer');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const filteredUsers = users.filter((u) => {
     const matchesSearch = (u.full_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
