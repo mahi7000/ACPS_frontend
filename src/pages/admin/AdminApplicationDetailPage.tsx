@@ -49,8 +49,8 @@ export const AdminApplicationDetailPage: React.FC = () => {
         {i.validation_status}
       </span>
     )},
-    { header: 'Actions', cell: () => (
-      <button className="text-primary hover:text-primary/80"><Download className="w-4 h-4" /></button>
+    { header: 'Actions', cell: (i) => (
+      <a href={i.file_url || '#'} target="_blank" rel="noreferrer" className="text-primary hover:text-primary/80"><Download className="w-4 h-4" /></a>
     )},
   ];
 
@@ -114,7 +114,7 @@ export const AdminApplicationDetailPage: React.FC = () => {
               { header: 'Name', accessorKey: 'neighbor_name' },
               { header: 'Phone', accessorKey: 'neighbor_phone' },
               { header: 'Status', cell: (i: any) => <span className="bg-slate-100 px-2 py-1 rounded text-xs">{i.status}</span> },
-              { header: 'Consent', cell: () => <button className="text-primary hover:underline"><Download className="w-4 h-4 inline mr-1" /> View</button> }
+              { header: 'Consent', cell: (i: any) => i.consent_document_url ? <a href={i.consent_document_url} target="_blank" rel="noreferrer" className="text-primary hover:underline"><Download className="w-4 h-4 inline mr-1" /> View</a> : <span className="text-slate-400 text-xs">No file</span> }
             ]} 
           />
         )}

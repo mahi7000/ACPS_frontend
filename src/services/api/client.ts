@@ -44,6 +44,16 @@ const processQueue = (error: any, token: string | null = null) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // If the request expected a blob but the server returned a JSON error (e.g. 400/404)
+    if (error.response?.data instanceof Blob && error.response?.data?.type === 'application/json') {
+      try {
+        const text = await error.response.data.text();
+        error.response.data = JSON.parse(text);
+      } catch (e) {
+        // ignore
+      }
+    }
+
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {

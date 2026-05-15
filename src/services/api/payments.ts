@@ -11,9 +11,7 @@ export const paymentsApi = {
     return res.data;
   },
   uploadReceipt: async (invoiceId: string, data: FormData) => {
-    const res = await apiClient.post(`/payments/invoices/${invoiceId}/bank-receipt/`, data, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const res = await apiClient.post(`/payments/invoices/${invoiceId}/bank-receipt/`, data);
     return res.data;
   },
   downloadReceipt: async (receiptId: string) => {
