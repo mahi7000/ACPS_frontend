@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { adminApi } from '@/services/api/admin';
+import { applicationsApi } from '@/services/api/applications';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { DataTable } from '@/components/tables/DataTable';
 import type { ColumnDef } from '@/components/tables/DataTable';
@@ -174,7 +175,14 @@ export const ApplicationAssignmentPage: React.FC = () => {
         </span>
       ),
     },
-    { header: 'Status', cell: (i) => <StatusBadge status={i.status} /> },
+    { 
+      header: 'Status', 
+      cell: (i) => {
+        // Mask the status to show UNDER_REVIEW if the backend failed to transition it after assignment
+        const displayStatus = (i.status === 'AWAITING_ASSIGNMENT' && i.reviewer_name) ? 'UNDER_REVIEW' : i.status;
+        return <StatusBadge status={displayStatus} />;
+      } 
+    },
     {
       header: 'Days Waiting',
       cell: (i) => {

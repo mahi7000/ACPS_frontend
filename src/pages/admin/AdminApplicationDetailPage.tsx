@@ -65,7 +65,7 @@ export const AdminApplicationDetailPage: React.FC = () => {
           <p className="text-slate-500 text-sm">Created on {app.created_at ? format(new Date(app.created_at), 'PPP') : 'N/A'}</p>
         </div>
         <div className="flex-1" />
-        <StatusBadge status={app.status} size="md" />
+        <StatusBadge status={(app.status === 'AWAITING_ASSIGNMENT' && (app.reviewer_name || app.assigned_officer_id)) ? 'UNDER_REVIEW' : app.status} size="md" />
       </div>
 
       <div className="flex space-x-1 bg-slate-100 p-1 rounded-lg overflow-x-auto">

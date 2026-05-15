@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { reviewsApi } from '@/services/api/reviews';
+import { apiClient } from '@/services/api/client';
+import { useAuthStore } from '@/stores/authStore';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { DataTable } from '@/components/tables/DataTable';
@@ -17,19 +19,28 @@ const getSLAColor = (daysOpen: number, revisions: number) => {
 export const ReviewerDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [queue, setQueue] = useState<any[]>([]);
+  const { user } = useAuthStore();
 
   useEffect(() => {
     const fetchQueue = async () => {
       try {
-        // API returns only applications assigned to the current user
+        // Strategy 1: Use the dedicated queue endpoint (returns only this reviewer's apps)
         const res = await reviewsApi.getQueue();
-        const raw = res.results || res || [];
-        // Filter by assigned status
-        const filtered = raw.filter((a: any) => 
-          a.status === 'UNDER_REVIEW' || a.status === 'REVISION_REQUIRED'
-        );
+        let raw: any[] = res.results || res || [];
+
+        // Strategy 2: If the queue returns empty (backend bug), fall back to fetching
+        // all applications and filtering by the current reviewer's user_id
+        if (raw.length === 0 && user?.user_id) {
+          console.warn('[Reviewer] Queue empty — falling back to direct application search');
+          const fallback = await apiClient.get('/applications/', {
+            params: { assigned_officer_id: user.user_id, page_size: 100 }
+          });
+          const fallbackList = fallback.data?.results || fallback.data || [];
+          raw = fallbackList;
+        }
+
         // Sort by urgency: most days open first
-        const sorted = [...filtered].sort((a, b) => {
+        const sorted = [...raw].sort((a: any, b: any) => {
           const da = differenceInDays(new Date(), new Date(a.created_at));
           const db = differenceInDays(new Date(), new Date(b.created_at));
           return db - da;
@@ -42,7 +53,7 @@ export const ReviewerDashboard: React.FC = () => {
       }
     };
     fetchQueue();
-  }, []);
+  }, [user?.user_id]);
 
   const totalInQueue = queue.length;
   const critical = queue.filter(a => {
@@ -74,7 +85,7 @@ export const ReviewerDashboard: React.FC = () => {
       ),
     },
     { header: 'Applicant', cell: (i) => i.applicant_name || 'N/A' },
-    { header: 'Status', cell: (i) => <StatusBadge status={i.status} /> },
+    { header: 'Status', cell: (i) => <StatusBadge status={i.status === 'AWAITING_ASSIGNMENT' ? 'UNDER_REVIEW' : i.status} /> },
     {
       header: 'Days Open',
       cell: (i) => {
