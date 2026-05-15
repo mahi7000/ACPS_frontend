@@ -9,16 +9,23 @@ export const apiClient = axios.create({
   },
 });
 
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('accessToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  // CRITICAL: If it's FormData, we MUST let the browser set the 
+  // Content-Type with the unique boundary string.
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
+  } else {
+    // Standard for everything else
+    config.headers['Content-Type'] = 'application/json';
+  }
+
+  return config;
+});
 
 let isRefreshing = false;
 let failedQueue: any[] = [];

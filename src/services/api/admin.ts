@@ -2,12 +2,15 @@ import { apiClient } from './client';
 
 export const adminApi = {
   getStats: async () => {
-    // Requires an endpoint implementation or we can mock it based on spec
     const res = await apiClient.get('/admin/stats/');
     return res.data;
   },
   getUsers: async (params?: any) => {
     const res = await apiClient.get('/users/', { params });
+    return res.data;
+  },
+  getReviewOfficers: async () => {
+    const res = await apiClient.get('/users/', { params: { role: 'REVIEW_OFFICER', is_active: true } });
     return res.data;
   },
   createOfficer: async (data: any) => {
@@ -16,6 +19,14 @@ export const adminApi = {
   },
   deactivateUser: async (userId: string) => {
     const res = await apiClient.put(`/users/${userId}/deactivate/`);
+    return res.data;
+  },
+  getAllApplications: async (params?: any) => {
+    const res = await apiClient.get('/applications/', { params });
+    return res.data;
+  },
+  assignReviewer: async (applicationId: string, data: { reviewer_id?: string; auto_assign?: boolean }) => {
+    const res = await apiClient.post(`/applications/${applicationId}/assign-reviewer/`, data);
     return res.data;
   },
   getPayments: async (params?: any) => {

@@ -25,8 +25,16 @@ export const approvalsApi = {
     const res = await apiClient.post(`/applications/${applicationId}/reject-final/`, data);
     return res.data;
   },
+  sendBackToReviewer: async (applicationId: string, data: { instructions: string }) => {
+    const res = await apiClient.post(`/applications/${applicationId}/send-back-to-reviewer/`, data);
+    return res.data;
+  },
   getCompletionReview: async (applicationId: string) => {
     const res = await apiClient.get(`/approvals/completion-review/${applicationId}/`);
+    return res.data;
+  },
+  rejectCompletion: async (applicationId: string, data: { reason: string }) => {
+    const res = await apiClient.post(`/applications/${applicationId}/reject-completion/`, data);
     return res.data;
   },
 };

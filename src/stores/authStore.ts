@@ -95,3 +95,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ user });
   },
 }));
+
+// Hydrate the store synchronously before React mounts so routes are protected correctly
+useAuthStore.getState().initialize();
