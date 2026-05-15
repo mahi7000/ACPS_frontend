@@ -27,7 +27,7 @@ export const ApplicationsPage: React.FC = () => {
     fetchApps();
   }, [statusFilter]);
 
-  const filteredApps = applications.filter((app) => 
+  const filteredApps = applications.filter((app) =>
     (app.arn || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -56,11 +56,6 @@ export const ApplicationsPage: React.FC = () => {
           <Link to={`/applicant/applications/${item.application_id}`} className="text-highlight hover:text-highlight/80 font-medium text-sm">
             View Details
           </Link>
-          {(item.status === 'PAYMENT_PENDING' || item.status === 'PAYMENT_EXPIRED') && (
-            <Link to={`/applicant/payment/${item.application_id}`} className="text-primary hover:text-primary/80 font-medium text-sm">
-              Pay Fees
-            </Link>
-          )}
         </div>
       ),
     },
