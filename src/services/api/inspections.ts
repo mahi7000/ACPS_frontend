@@ -6,9 +6,7 @@ export const inspectionsApi = {
     return res.data;
   },
   declareCompletion: async (applicationId: string, data: FormData) => {
-    const res = await apiClient.post(`/applications/${applicationId}/declare-completion/`, data, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const res = await apiClient.post(`/applications/${applicationId}/declare-completion/`, data);
     return res.data;
   },
   getApplicationInspections: async (applicationId: string) => {
@@ -36,9 +34,7 @@ export const inspectionsApi = {
     return res.data;
   },
   uploadPhotos: async (inspectionId: string, data: FormData) => {
-    const res = await apiClient.post(`/inspections/${inspectionId}/photos/`, data, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const res = await apiClient.post(`/inspections/${inspectionId}/photos/`, data);
     return res.data;
   },
   submit: async (inspectionId: string, data: any) => {

@@ -38,8 +38,13 @@ export const InspectorDashboard: React.FC = () => {
     })();
   }, []);
 
-  const upcoming = schedule.filter(i => !isPast(parseISO(i.scheduled_date || new Date().toISOString())) || i.status === 'SCHEDULED' || i.status === 'IN_PROGRESS');
-  const past = schedule.filter(i => i.status === 'COMPLETED' || i.status === 'FAILED');
+  const upcoming = schedule
+    .filter(i => !isPast(parseISO(i.scheduled_date || new Date().toISOString())) || i.status === 'SCHEDULED' || i.status === 'IN_PROGRESS')
+    .sort((a, b) => new Date(a.scheduled_date || 0).getTime() - new Date(b.scheduled_date || 0).getTime());
+
+  const past = schedule
+    .filter(i => i.status === 'COMPLETED' || i.status === 'FAILED')
+    .sort((a, b) => new Date(b.scheduled_date || 0).getTime() - new Date(a.scheduled_date || 0).getTime());
   const todayCount = schedule.filter(i => {
     const today = new Date().toISOString().split('T')[0];
     return i.scheduled_date?.startsWith(today);

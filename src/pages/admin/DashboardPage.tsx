@@ -19,55 +19,67 @@ export const AdminDashboard: React.FC = () => {
   });
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchRealData = async () => {
       try {
-        const res = await adminApi.getStats();
-        console.log('Dashboard stats raw response:', res);
-        
-        // Dynamic probing for applications
-        const appsData = res?.applications || res?.application_stats || res;
-        const rawStatusData = appsData?.by_status || appsData?.status_distribution || appsData?.applications_by_status || {};
-        const parsedStatusData = Object.entries(rawStatusData).map(([key, value]) => ({
+        const [usersRes, appsRes, paymentsRes] = await Promise.all([
+          adminApi.getUsers().catch(() => []),
+          adminApi.getAllApplications().catch(() => []),
+          adminApi.getPayments().catch(() => [])
+        ]);
+
+        const usersList = usersRes?.results || usersRes || [];
+        const appsList = appsRes?.results || appsRes || [];
+        const paymentsList = paymentsRes?.results || paymentsRes || [];
+
+        const totalUsers = usersRes?.count || usersList.length;
+        const totalApps = appsRes?.count || appsList.length;
+
+        // Calculate Revenue
+        const totalRevenue = paymentsList
+          .filter((p: any) => p.status === 'COMPLETED')
+          .reduce((sum: number, p: any) => sum + (Number(p.amount_etb) || 0), 0);
+
+        // Calculate Application Status Distribution
+        const statusCounts: Record<string, number> = {};
+        appsList.forEach((app: any) => {
+          const status = app.status || 'UNKNOWN';
+          statusCounts[status] = (statusCounts[status] || 0) + 1;
+        });
+
+        const parsedStatusData = Object.entries(statusCounts).map(([key, value]) => ({
           name: key.replace(/_/g, ' '),
-          value: Number(value)
+          value
         }));
 
-        // Dynamic probing for payments
-        const paymentsData = res?.payments || res?.payment_stats || res;
-        const rawPaymentData = paymentsData?.by_method || paymentsData?.revenue_by_method || paymentsData?.payments_by_method || {};
-        const parsedPaymentData = Object.entries(rawPaymentData).map(([key, value]) => ({
-          name: key.replace(/_/g, ' '),
-          amount: Number(value)
-        }));
+        // Calculate Revenue by Method
+        const methodCounts: Record<string, number> = {};
+        paymentsList.filter((p: any) => p.status === 'COMPLETED').forEach((p: any) => {
+          const method = p.payment_method || 'UNKNOWN';
+          methodCounts[method] = (methodCounts[method] || 0) + (Number(p.amount_etb) || 0);
+        });
 
-        const totalUsers = res?.totalUsers || res?.total_users || res?.users?.total || 0;
-        const activeApps = appsData?.total_submitted || appsData?.active_applications || appsData?.total || 0;
-        const rev = paymentsData?.total_amount_etb || paymentsData?.total_revenue || paymentsData?.total || 0;
-        const sla = res?.sla_breaches?.total_count || res?.sla_breaches || res?.total_sla_breaches || 0;
+        const parsedPaymentData = Object.entries(methodCounts).map(([key, value]) => ({
+          name: key.replace(/_/g, ' '),
+          amount: value
+        }));
 
         setStats({
-          totalUsers: typeof totalUsers === 'number' ? totalUsers : 0, 
-          activeApplications: typeof activeApps === 'number' ? activeApps : 0,
-          revenueCollected: typeof rev === 'number' ? rev : 0,
-          slaBreaches: typeof sla === 'number' ? sla : 0,
+          totalUsers, 
+          activeApplications: totalApps,
+          revenueCollected: totalRevenue,
+          slaBreaches: 0, // Fallback if no specific SLA endpoint
           statusData: parsedStatusData,
           revenueData: parsedPaymentData
         });
+
       } catch (err) {
-        toast.error('Failed to load dashboard statistics from server.');
-        setStats({
-          totalUsers: 0,
-          activeApplications: 0,
-          revenueCollected: 0,
-          slaBreaches: 0,
-          statusData: [],
-          revenueData: []
-        });
+        console.error('Failed to aggregate dashboard stats:', err);
+        toast.error('Failed to load dashboard data.');
       } finally {
         setLoading(false);
       }
     };
-    fetchStats();
+    fetchRealData();
   }, []);
 
   if (loading) return <LoadingSpinner fullPage />;

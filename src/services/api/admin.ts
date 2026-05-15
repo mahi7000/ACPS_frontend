@@ -63,7 +63,7 @@ export const adminApi = {
 
   // Reports
   exportReport: async (params: { report_type: string; date_from: string; date_to: string; format: string; subcity_id?: string }) => {
-    const res = await apiClient.get('/admin/reports/export', {
+    const res = await apiClient.get('/admin/reports/export/', {
       params,
       responseType: 'blob',
     });

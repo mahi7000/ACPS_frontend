@@ -146,26 +146,55 @@ export const ReportsPage: React.FC = () => {
 
   const handleExport = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (reportData.format !== 'csv') {
+      toast.error('Only CSV format is currently supported for direct exports.');
+      return;
+    }
+
     setExporting(true);
     toast.success(`Generating ${reportData.report_type} report...`);
     try {
-      const blob = await adminApi.exportReport({
-        report_type: reportData.report_type,
-        date_from: reportData.date_from,
-        date_to: reportData.date_to,
-        format: reportData.format
-      });
-      const url = window.URL.createObjectURL(new Blob([blob]));
+      let csvContent = "";
+      
+      if (reportData.report_type === 'APPLICATIONS') {
+        const res = await adminApi.getAllApplications();
+        const apps = res.results || res || [];
+        csvContent = "ARN,Applicant Name,Category,Status,Intended Use,Created At\n";
+        apps.forEach((a: any) => {
+          csvContent += `"${a.arn || ''}","${a.applicant_name || ''}","${a.building_category || ''}","${a.status || ''}","${a.intended_use || ''}","${a.created_at || ''}"\n`;
+        });
+      } else if (reportData.report_type === 'PAYMENTS') {
+        const res = await adminApi.getPayments();
+        const payments = res.results || res || [];
+        csvContent = "Invoice ID,Amount (ETB),Method,Status,Date\n";
+        payments.forEach((p: any) => {
+          csvContent += `"${p.invoice_id || ''}",${p.amount_etb || 0},"${p.payment_method || ''}","${p.status || ''}","${p.created_at || ''}"\n`;
+        });
+      } else if (reportData.report_type === 'USER_ACTIVITY') {
+        const res = await adminApi.getUsers();
+        const users = res.results || res || [];
+        csvContent = "Name,Email,Role,Active,Joined\n";
+        users.forEach((u: any) => {
+          csvContent += `"${u.first_name || ''} ${u.last_name || ''}","${u.email || ''}","${u.role || ''}",${u.is_active || false},"${u.date_joined || ''}"\n`;
+        });
+      } else {
+         toast.error("This report type is currently not supported for direct download.");
+         setExporting(false);
+         return;
+      }
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `${reportData.report_type.toLowerCase()}_report_${new Date().getTime()}.${reportData.format}`);
+      link.setAttribute('download', `${reportData.report_type.toLowerCase()}_report_${new Date().getTime()}.csv`);
       document.body.appendChild(link);
       link.click();
       link.remove();
       toast.success('Download started');
     } catch (err: any) {
       console.error('Report export error:', err);
-      toast.error(err.response?.data?.detail || err.response?.data?.error || err.message || 'Failed to export report');
+      toast.error('Failed to generate report data.');
     } finally {
       setExporting(false);
     }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { reviewsApi } from '@/services/api/reviews';
+import { applicationsApi } from '@/services/api/applications';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import {
@@ -41,10 +42,19 @@ export const ReviewWorkspacePage: React.FC = () => {
 
   const refresh = async () => {
     try {
-      const data = await reviewsApi.getWorkspace(id!);
-      setWorkspace(data);
+      const [appData, commentsRes] = await Promise.all([
+        applicationsApi.getById(id!),
+        reviewsApi.getComments(id!).catch(() => [])
+      ]);
+
+      setWorkspace({
+        application: appData,
+        documents: appData.documents || [],
+        neighbors: appData.neighbors || [],
+        comments: commentsRes.results || commentsRes || []
+      });
     } catch {
-      toast.error('Failed to load workspace');
+      toast.error('Failed to load workspace data');
     }
   };
 

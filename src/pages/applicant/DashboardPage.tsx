@@ -33,10 +33,8 @@ export const ApplicantDashboard: React.FC = () => {
     try {
       const invoice = await applicationsApi.getOrCreateInvoice(applicationId);
 
-      if (invoice?.id) {
-        navigate(`/applicant/payment/${invoice.id}`);
-      } else if (invoice?.invoice_id) {
-        navigate(`/applicant/payment/${invoice.invoice_id}`);
+      if (invoice?.id || invoice?.invoice_id) {
+        navigate(`/applicant/payment/${applicationId}`);
       } else {
         toast.error('Unable to create invoice. Please try again.');
       }
