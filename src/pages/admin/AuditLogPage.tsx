@@ -25,7 +25,7 @@ export const AuditLogPage: React.FC = () => {
   }, []);
 
   const columns: ColumnDef<any>[] = [
-    { header: 'Timestamp', cell: (i) => format(new Date(i.timestamp), 'MMM dd, yyyy HH:mm:ss') },
+    { header: 'Timestamp', cell: (i) => i.timestamp ? format(new Date(i.timestamp), 'MMM dd, yyyy HH:mm:ss') : 'N/A' },
     { header: 'Actor', cell: (i) => (
       <div>
         <p className="font-medium text-slate-800">{i.actor_name}</p>

@@ -37,4 +37,16 @@ export const adminApi = {
     });
     return res.data;
   },
+  getConfig: async () => {
+    const res = await apiClient.get('/admin/config/');
+    return res.data;
+  },
+  updateFeeSchedule: async (data: any) => {
+    const res = await apiClient.put('/admin/config/fee-schedule/', data);
+    return res.data;
+  },
+  updateSlaThresholds: async (data: any) => {
+    const res = await apiClient.put('/admin/config/sla-thresholds/', data);
+    return res.data;
+  },
 };

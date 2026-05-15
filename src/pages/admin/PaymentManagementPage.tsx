@@ -42,7 +42,7 @@ export const PaymentManagementPage: React.FC = () => {
   const columns: ColumnDef<any>[] = [
     { header: 'Invoice ID', accessorKey: 'invoice_id' },
     { header: 'ARN', cell: (i) => <span className="font-medium text-primary">{i.application_arn}</span> },
-    { header: 'Amount', cell: (i) => `${i.amount_etb.toLocaleString()} ETB` },
+    { header: 'Amount', cell: (i) => `${(i.amount_etb || 0).toLocaleString()} ETB` },
     { header: 'Method', cell: (i) => i.payment_method || 'N/A' },
     { header: 'Status', cell: (i) => <StatusBadge status={i.status} /> },
     { header: 'Receipt', cell: (i) => (

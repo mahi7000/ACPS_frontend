@@ -42,6 +42,7 @@ export const AuthenticatedLayout: React.FC = () => {
       case 'ADMIN':
         return [
           { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
+          { name: 'Applications', path: '/admin/applications', icon: FileText },
           { name: 'User Management', path: '/admin/users', icon: Users },
           { name: 'Payments', path: '/admin/payments', icon: Banknote },
           { name: 'Config', path: '/admin/config', icon: Settings },
