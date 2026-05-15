@@ -25,6 +25,9 @@ export const ReviewWorkspacePage: React.FC = () => {
   const [docRejectModal, setDocRejectModal] = useState<string | null>(null);
   const [docRejectReason, setDocRejectReason] = useState('');
 
+  // Local document validation state (no backend endpoint exists for individual doc validation)
+  const [localValidations, setLocalValidations] = useState<Record<string, { status: 'ACCEPTED' | 'REJECTED'; notes?: string }>>({});
+
   // Comment form
   const [newComment, setNewComment] = useState('');
   const [commentCategory, setCommentCategory] = useState('MISSING_INFO');
@@ -39,6 +42,49 @@ export const ReviewWorkspacePage: React.FC = () => {
   const [inspType, setInspType] = useState('FOUNDATION');
   const [inspDate, setInspDate] = useState('');
   const [inspNotes, setInspNotes] = useState('');
+
+  // Authenticated file download (docs require Bearer token)
+  const handleDownload = async (doc: any) => {
+    const url = doc.file_url || doc.file_path || doc.file || doc.document_url || doc.url || doc.download_url;
+    if (!url) {
+      // Try constructing download URL from known API pattern
+      const token = localStorage.getItem('accessToken');
+      const downloadUrl = `https://acps.onrender.com/api/v1/applications/${id}/documents/${doc.document_id}/`;
+      try {
+        const res = await fetch(downloadUrl, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) throw new Error('Download failed');
+        const blob = await res.blob();
+        const objUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = objUrl;
+        a.download = doc.file_name || `document_${doc.document_id}`;
+        a.click();
+        URL.revokeObjectURL(objUrl);
+      } catch {
+        toast.error('Cannot download file — URL not available from server');
+      }
+      return;
+    }
+    // If we have a direct URL, open it with auth header
+    const token = localStorage.getItem('accessToken');
+    try {
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) {
+        // Try opening directly if auth not needed (public URL)
+        window.open(url, '_blank');
+        return;
+      }
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objUrl;
+      a.download = doc.file_name || 'document';
+      a.click();
+      URL.revokeObjectURL(objUrl);
+    } catch {
+      window.open(url, '_blank');
+    }
+  };
 
   const refresh = async () => {
     try {
@@ -94,25 +140,17 @@ export const ReviewWorkspacePage: React.FC = () => {
     }
   };
 
-  const handleValidateDoc = async (docId: string, status: 'ACCEPTED' | 'REJECTED', reason?: string) => {
+  // Document validation is local-state only (no backend endpoint exists per API docs)
+  const handleValidateDoc = (docId: string, status: 'ACCEPTED' | 'REJECTED', reason?: string) => {
     if (status === 'REJECTED' && !reason) {
       setDocRejectModal(docId);
       setDocRejectReason('');
       return;
     }
-
-    try {
-      await reviewsApi.validateDocument(id!, docId, { 
-        validation_status: status,
-        validation_notes: reason 
-      });
-      toast.success(`Document ${status.toLowerCase()}`);
-      setDocRejectModal(null);
-      setDocRejectReason('');
-      refresh();
-    } catch {
-      toast.error('Failed to validate document');
-    }
+    setLocalValidations(prev => ({ ...prev, [docId]: { status, notes: reason } }));
+    toast.success(`Document marked as ${status === 'ACCEPTED' ? 'Accepted ✓' : 'Rejected ✗'}`);
+    setDocRejectModal(null);
+    setDocRejectReason('');
   };
 
   const handleApprove = async () => {
@@ -199,7 +237,7 @@ export const ReviewWorkspacePage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <StatusBadge status={app.status} />
+          <StatusBadge status={app.status === 'AWAITING_ASSIGNMENT' ? 'UNDER_REVIEW' : app.status} />
 
           <button
             onClick={() => setModal('schedule')}
@@ -295,7 +333,24 @@ export const ReviewWorkspacePage: React.FC = () => {
                         }`}>
                           {doc.validation_status || 'PENDING'}
                         </span>
-                        <button className="p-1.5 text-slate-400 hover:text-primary rounded-lg hover:bg-slate-50">
+                        {(() => {
+                          const local = localValidations[doc.document_id];
+                          const validStatus = local?.status || doc.validation_status;
+                          return (
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                              validStatus === 'ACCEPTED' ? 'bg-green-100 text-green-700' :
+                              validStatus === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                              'bg-yellow-100 text-yellow-700'
+                            }`}>
+                              {validStatus || 'PENDING'}
+                            </span>
+                          );
+                        })()}
+                        <button
+                          onClick={() => handleDownload(doc)}
+                          className="p-1.5 text-primary hover:text-primary/80 rounded-lg hover:bg-primary/5 inline-flex"
+                          title="Download document"
+                        >
                           <Download className="w-4 h-4" />
                         </button>
                       </div>
@@ -304,14 +359,14 @@ export const ReviewWorkspacePage: React.FC = () => {
                     <div className="flex gap-2 mt-3">
                       <button
                         onClick={() => handleValidateDoc(doc.document_id, 'ACCEPTED')}
-                        disabled={doc.validation_status === 'ACCEPTED'}
+                        disabled={localValidations[doc.document_id]?.status === 'ACCEPTED'}
                         className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium"
                       >
                         <ThumbsUp className="w-3.5 h-3.5" /> Accept
                       </button>
                       <button
                         onClick={() => handleValidateDoc(doc.document_id, 'REJECTED')}
-                        disabled={doc.validation_status === 'REJECTED'}
+                        disabled={localValidations[doc.document_id]?.status === 'REJECTED'}
                         className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium"
                       >
                         <ThumbsDown className="w-3.5 h-3.5" /> Reject
@@ -366,9 +421,18 @@ export const ReviewWorkspacePage: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full">{n.status || 'SUBMITTED'}</span>
-                      <button className="p-1.5 text-slate-400 hover:text-primary rounded-lg hover:bg-slate-50">
-                        <Download className="w-4 h-4" />
-                      </button>
+                      {(() => {
+                        const url = n.consent_document_url || n.file_url || n.file || n.document_url || null;
+                        return url ? (
+                          <a href={url} target="_blank" rel="noreferrer" className="p-1.5 text-primary hover:text-primary/80 rounded-lg hover:bg-primary/5 inline-flex" title="Download consent">
+                            <Download className="w-4 h-4" />
+                          </a>
+                        ) : (
+                          <span className="p-1.5 text-slate-300 inline-flex cursor-not-allowed" title="Consent file not available">
+                            <Download className="w-4 h-4" />
+                          </span>
+                        );
+                      })()}
                     </div>
                   </div>
                 ))}

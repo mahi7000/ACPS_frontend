@@ -26,8 +26,19 @@ export const reviewsApi = {
     documentId: string,
     data: { validation_status: 'ACCEPTED' | 'REJECTED'; validation_notes?: string }
   ) => {
-    const res = await apiClient.put(`/applications/${applicationId}/documents/${documentId}/validate/`, data);
-    return res.data;
+    // Try the standalone document validation endpoint first
+    // If that fails with 404, fall back to the application-scoped endpoint
+    try {
+      const res = await apiClient.put(`/documents/${documentId}/validate/`, data);
+      return res.data;
+    } catch (err: any) {
+      if (err.response?.status === 404) {
+        // Fallback: application-scoped path
+        const res = await apiClient.put(`/applications/${applicationId}/documents/${documentId}/validate/`, data);
+        return res.data;
+      }
+      throw err;
+    }
   },
   scheduleInspection: async (
     applicationId: string,

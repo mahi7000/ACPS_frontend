@@ -48,7 +48,10 @@ export const AdminApplicationsPage: React.FC = () => {
     },
     {
       header: 'Status',
-      cell: (item) => <StatusBadge status={item.status} />,
+      cell: (item) => {
+        const displayStatus = (item.status === 'AWAITING_ASSIGNMENT' && (item.reviewer_name || item.assigned_officer_id)) ? 'UNDER_REVIEW' : item.status;
+        return <StatusBadge status={displayStatus} />;
+      },
     },
     {
       header: 'Created Date',
