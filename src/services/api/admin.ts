@@ -34,9 +34,62 @@ export const adminApi = {
     const res = await apiClient.get('/applications/', { params });
     return res.data;
   },
-  assignReviewer: async (applicationId: string, data: { assigned_officer_id: string; reason?: string; previous_officer_id?: string }) => {
-    const res = await apiClient.post(`/applications/${applicationId}/assign-reviewer/`, data);
-    return res.data;
+  
+  // Fixed: Make assigned_officer_id optional for auto-assign support
+  assignReviewer: async (applicationId: string, data: { assigned_officer_id: string; auto_assign?: boolean; reason?: string; previous_officer_id?: string }) => {
+    console.log('Assigning reviewer - URL:', `/applications/${applicationId}/assign-reviewer/`);
+    console.log('Assigning reviewer - Data:', data);
+    
+    try {
+      const res = await apiClient.post(`/applications/${applicationId}/assign-reviewer/`, data);
+      console.log('Assign reviewer response:', res.data);
+      return res.data;
+    } catch (error: any) {
+      console.error('Assign reviewer error:', error.response?.status, error.response?.data);
+      
+      // If the endpoint doesn't exist (404), try alternative endpoints
+      if (error.response?.status === 404) {
+        console.log('Trying alternative endpoint: /admin/applications/{id}/assign/');
+        try {
+          const altRes = await apiClient.post(`/admin/applications/${applicationId}/assign/`, data);
+          console.log('Alternative endpoint response:', altRes.data);
+          return altRes.data;
+        } catch (altError: any) {
+          console.error('Alternative endpoint also failed:', altError.response?.status);
+          throw altError;
+        }
+      }
+      throw error;
+    }
+  },
+  
+  // Auto-assign (tries without specifying officer)
+  autoAssignReviewer: async (applicationId: string) => {
+    console.log('Auto-assigning application:', applicationId);
+    
+    // Try the regular endpoint with auto_assign flag
+    try {
+      const res = await apiClient.post(`/applications/${applicationId}/assign-reviewer/`, {
+        assigned_officer_id: '', // Empty string for auto-assign
+        auto_assign: true
+      });
+      console.log('Auto-assign response:', res.data);
+      return res.data;
+    } catch (error: any) {
+      console.error('Auto-assign error:', error.response?.status, error.response?.data);
+      
+      // If 404, try alternative endpoint
+      if (error.response?.status === 404) {
+        try {
+          const altRes = await apiClient.post(`/admin/applications/${applicationId}/auto-assign/`, {});
+          return altRes.data;
+        } catch (altError) {
+          // If all fails, throw the original error
+          throw error;
+        }
+      }
+      throw error;
+    }
   },
 
   // Reviews & SLA

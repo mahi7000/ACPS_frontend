@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import {
   Building, FileText, Users, Clock, MessageSquare,
   Download, ArrowLeft, AlertCircle, Edit3, Save, X,
-  CheckCircle, PlusCircle, Trash2,
+  CheckCircle, PlusCircle, Trash2, Award, ExternalLink,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -21,6 +21,8 @@ export const ApplicationDetailPage: React.FC = () => {
   const [app, setApp] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('details');
+  const [permitData, setPermitData] = useState<any>(null);
+  const [loadingPermit, setLoadingPermit] = useState(false);
 
   // Draft editing state
   const [isEditingDetails, setIsEditingDetails] = useState(false);
@@ -40,11 +42,31 @@ export const ApplicationDetailPage: React.FC = () => {
   const fetchDetail = async () => {
     try {
       const data = await applicationsApi.getById(id!);
+      console.log('Application data:', data);
+      console.log('Permit number:', data.permit_number);
       setApp(data);
+      
+      // If application has a permit number, fetch permit details
+      if (data.permit_number) {
+        fetchPermitDetails(data.permit_number);
+      }
     } catch {
       toast.error('Failed to load application details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPermitDetails = async (permitNumber: string) => {
+    setLoadingPermit(true);
+    try {
+      const permitInfo = await applicationsApi.getPermit(permitNumber);
+      setPermitData(permitInfo);
+    } catch (err) {
+      console.error('Failed to fetch permit:', err);
+      // Don't show error toast - permit might not be accessible yet
+    } finally {
+      setLoadingPermit(false);
     }
   };
 
@@ -75,15 +97,15 @@ export const ApplicationDetailPage: React.FC = () => {
   if (!app) return <div>Application not found</div>;
 
   const isDraft = app.status === 'DRAFT';
+  const hasPermit = app.status === 'PERMIT_ISSUED' || app.status === 'CONSENT_ISSUED' || app.status === 'COMPLETED';
+  const permitNumber = app.permit_number || permitData?.permit_number;
 
   const handlePayNow = () => {
-    // Check app state first
     if (app.invoice_id) {
       navigate(`/applicant/payment/${app.invoice_id}`);
       return;
     }
 
-    // Check localStorage for stored invoice_id
     const invoiceMap = JSON.parse(localStorage.getItem('app_invoices') || '{}');
     const storedInvoiceId = invoiceMap[app.application_id];
 
@@ -92,8 +114,21 @@ export const ApplicationDetailPage: React.FC = () => {
       return;
     }
 
-    // If still not found, show error
     toast.error('Invoice information not available. Please contact support.');
+  };
+
+  const handleDownloadPermit = () => {
+    if (permitNumber) {
+      // Open permit verification page in new tab
+      window.open(`/api/v1/permits/${permitNumber}/`, '_blank');
+    }
+  };
+
+  const handleVerifyPermit = () => {
+    if (permitNumber) {
+      // Open public verification page
+      window.open(`/api/v1/verify/${permitNumber}/`, '_blank');
+    }
   };
 
   /* ── Inline edit: building details ── */
@@ -202,29 +237,25 @@ export const ApplicationDetailPage: React.FC = () => {
   };
 
   /* ── Submit draft ── */
-  /* ── Submit draft ── */
   const handleSubmitDraft = async () => {
     setSubmitting(true);
     try {
       const result = await applicationsApi.submit(id!);
-      console.log('Submit result:', result); // Debug
+      console.log('Submit result:', result);
       toast.success('Application submitted successfully!', { duration: 4000 });
 
-      // Store invoice_id in localStorage
       if (result.invoice_id && id) {
         const invoiceMap = JSON.parse(localStorage.getItem('app_invoices') || '{}');
         invoiceMap[id] = result.invoice_id;
         localStorage.setItem('app_invoices', JSON.stringify(invoiceMap));
       }
 
-      // Update app state with the result
       setApp((prev: any) => ({
         ...prev,
         ...result,
-        invoice_id: result.invoice_id // Explicitly set invoice_id
+        invoice_id: result.invoice_id
       }));
 
-      // If invoice_id is returned, navigate to payment
       if (result.invoice_id) {
         setTimeout(() => {
           navigate(`/applicant/payment/${result.invoice_id}`);
@@ -301,9 +332,30 @@ export const ApplicationDetailPage: React.FC = () => {
         </div>
         <div className="flex-1" />
         <StatusBadge status={app.status} size="md" />
+        
+        {/* Download Permit Button */}
+        {hasPermit && permitNumber && (
+          <div className="flex gap-2">
+            <button 
+              onClick={handleDownloadPermit}
+              className="btn btn-primary inline-flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Download Permit
+            </button>
+            <button 
+              onClick={handleVerifyPermit}
+              className="btn btn-outline inline-flex items-center gap-2"
+              title="Public verification page"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Verify
+            </button>
+          </div>
+        )}
+        
         {(app.status === 'PAYMENT_PENDING' || app.status === 'PAYMENT_EXPIRED') && (
           <button onClick={handlePayNow} className="btn btn-primary inline-flex items-center gap-2">
-            {/* <CreditCard className="w-4 h-4" /> */}
             Pay Fees
           </button>
         )}
@@ -317,6 +369,26 @@ export const ApplicationDetailPage: React.FC = () => {
           </button>
         )}
       </div>
+
+      {/* Permit Banner */}
+      {hasPermit && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
+          <Award className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-semibold text-green-800">
+              {app.status === 'PERMIT_ISSUED' ? 'Construction Permit Issued' : 
+               app.status === 'CONSENT_ISSUED' ? 'Planning Consent Issued' : 
+               'Completion Certificate Issued'}
+            </p>
+            <p className="text-sm text-green-700 mt-0.5">
+              {permitNumber && <>Permit Number: <strong>{permitNumber}</strong></>}
+              {permitData?.issue_date && <> • Issued: {format(new Date(permitData.issue_date), 'PPP')}</>}
+              {permitData?.expiry_date && <> • Expires: {format(new Date(permitData.expiry_date), 'PPP')}</>}
+            </p>
+            {loadingPermit && <p className="text-sm text-green-600 mt-1">Loading permit details...</p>}
+          </div>
+        </div>
+      )}
 
       {/* Draft banner */}
       {isDraft && (
@@ -473,13 +545,11 @@ export const ApplicationDetailPage: React.FC = () => {
         {/* ── TAB: Documents ── */}
         {activeTab === 'docs' && (
           <div className="space-y-6">
-            {/* Uploaded documents table */}
             <div>
               <h3 className="font-semibold text-slate-700 mb-3">Uploaded Documents</h3>
               <DataTable data={app.documents || []} columns={docColumns} />
             </div>
 
-            {/* Required documents uploader (draft only) */}
             {isDraft && (
               <div>
                 <h3 className="font-semibold text-slate-700 mb-3 pt-4 border-t border-slate-100">
@@ -527,7 +597,6 @@ export const ApplicationDetailPage: React.FC = () => {
           <div className="space-y-6">
             <DataTable data={app.neighbors || []} columns={neighborColumns} />
 
-            {/* Add neighbour (draft only) */}
             {isDraft && (
               <div className="pt-4 border-t border-slate-100">
                 {!showAddNeighbor ? (

@@ -28,7 +28,26 @@ export const ApplicationAssignmentPage: React.FC = () => {
         adminApi.getAllApplications({ status: statusFilter || undefined }),
         adminApi.getReviewOfficers(),
       ]);
-      setApplications(appsRes.results || appsRes);
+      
+      const newApps = appsRes.results || appsRes;
+      
+      // Get stored assignments from localStorage
+      const assignmentMap = JSON.parse(localStorage.getItem('app_assignments') || '{}');
+      
+      // Merge server data with stored assignments
+      const mergedApps = newApps.map((app: any) => {
+        const storedAssignment = assignmentMap[app.application_id];
+        if (storedAssignment && !app.reviewer_name && !app.assigned_officer) {
+          return {
+            ...app,
+            reviewer_name: storedAssignment.officer_name,
+            _stored_assignment: true
+          };
+        }
+        return app;
+      });
+      
+      setApplications(mergedApps);
       setOfficers(officersRes.results || officersRes);
     } catch (err) {
       console.error('Failed to fetch data', err);
@@ -41,33 +60,87 @@ export const ApplicationAssignmentPage: React.FC = () => {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleAssign = async (autoAssign = false) => {
-    if (!modalApp) return;
-    if (!autoAssign && !selectedOfficer) {
-      toast.error('Please select a review officer');
-      return;
-    }
-    setAssigning(true);
-    try {
-      if (autoAssign) {
-        await adminApi.assignReviewer(modalApp.application_id, {
-          assigned_officer_id: '', // or some default value for auto-assign
-          // auto_assign: true as any // if your API supports it
-        });
-      } else {
-        await adminApi.assignReviewer(modalApp.application_id, {
-          assigned_officer_id: selectedOfficer
+  if (!modalApp) return;
+  if (!autoAssign && !selectedOfficer) {
+    toast.error('Please select a review officer');
+    return;
+  }
+  
+  setAssigning(true);
+  
+  const appToUpdate = { ...modalApp };
+  const officerId = selectedOfficer;
+  
+  try {
+    let response;
+    
+    if (autoAssign) {
+      console.log('Auto-assigning application:', appToUpdate.application_id);
+      try {
+        response = await adminApi.autoAssignReviewer(appToUpdate.application_id);
+      } catch (autoError) {
+        console.log('Auto-assign endpoint failed, trying regular assign');
+        // Pick the first available officer
+        const firstOfficer = officers[0];
+        const firstOfficerId = firstOfficer?.user_id || firstOfficer?.id;
+        response = await adminApi.assignReviewer(appToUpdate.application_id, {
+          assigned_officer_id: firstOfficerId || ''
         });
       }
-      toast.success(`Application ${modalApp.arn} assigned successfully`);
-      setModalApp(null);
-      setSelectedOfficer('');
-      fetchData();
-    } catch (e: any) {
-      toast.error(e.response?.data?.detail || 'Assignment failed');
-    } finally {
-      setAssigning(false);
+    } else {
+      console.log('Manual assigning to officer:', officerId);
+      console.log('Application ID:', appToUpdate.application_id);
+      
+      response = await adminApi.assignReviewer(appToUpdate.application_id, {
+        assigned_officer_id: officerId
+      });
     }
-  };
+    
+    console.log('Assignment response:', response);
+    
+    // Get the assigned officer name from the response
+    const assignedOfficerName = response.assigned_officer?.full_name || 
+                                'Assigned Officer';
+    
+    // Get the actual officer ID from response or use the selected one
+    const actualOfficerId = response.assigned_officer?.id || officerId;
+    
+    // Store assignment in localStorage for persistence
+    const assignmentMap = JSON.parse(localStorage.getItem('app_assignments') || '{}');
+    assignmentMap[appToUpdate.application_id] = {
+      officer_id: actualOfficerId,
+      officer_name: assignedOfficerName,
+      assigned_at: new Date().toISOString(),
+      arn: appToUpdate.arn
+    };
+    localStorage.setItem('app_assignments', JSON.stringify(assignmentMap));
+    
+    toast.success(`Application ${appToUpdate.arn} assigned successfully`);
+    
+    // Close modal
+    setModalApp(null);
+    setSelectedOfficer('');
+    
+    // Update local state with assignment
+    setApplications(prevApps => 
+      prevApps.map(app => 
+        app.application_id === appToUpdate.application_id 
+          ? { 
+              ...app, 
+              reviewer_name: assignedOfficerName,
+              status: 'UNDER_REVIEW'
+            } 
+          : app
+      )
+    );
+    
+  } catch (e: any) {
+    console.error('Assignment error:', e);
+    toast.error(e.response?.data?.detail || 'Assignment failed');
+  } finally {
+    setAssigning(false);
+  }
+};
 
   const filtered = applications.filter(a =>
     !searchTerm ||
@@ -115,9 +188,16 @@ export const ApplicationAssignmentPage: React.FC = () => {
     },
     {
       header: 'Assigned To',
-      cell: (i) => i.reviewer_name
-        ? <span className="flex items-center gap-1.5 text-sm text-green-700"><UserCheck className="w-4 h-4" />{i.reviewer_name}</span>
-        : <span className="text-xs text-slate-400 italic">Unassigned</span>,
+      cell: (i) => {
+        const reviewerName = i.reviewer_name || i.assigned_officer?.full_name || i.assigned_officer_name;
+        return reviewerName
+          ? <span className="flex items-center gap-1.5 text-sm text-green-700">
+              <UserCheck className="w-4 h-4" />
+              {reviewerName}
+              {i._stored_assignment && <span className="text-xs text-orange-500 ml-1">(pending)</span>}
+            </span>
+          : <span className="text-xs text-slate-400 italic">Unassigned</span>;
+      },
     },
     {
       header: 'Submitted',
@@ -125,19 +205,22 @@ export const ApplicationAssignmentPage: React.FC = () => {
     },
     {
       header: 'Action',
-      cell: (i) => (
-        <button
-          onClick={() => { setModalApp(i); setSelectedOfficer(''); }}
-          className={`btn text-xs py-1.5 px-3 gap-1 ${
-            i.reviewer_name
-              ? 'btn-outline'
-              : 'btn-primary'
-          }`}
-        >
-          <UserCheck className="w-3.5 h-3.5" />
-          {i.reviewer_name ? 'Reassign' : 'Assign'}
-        </button>
-      ),
+      cell: (i) => {
+        const canAssign = i.status === 'AWAITING_ASSIGNMENT' || !i.reviewer_name;
+        return (
+          <button
+            onClick={() => { setModalApp(i); setSelectedOfficer(''); }}
+            className={`btn text-xs py-1.5 px-3 gap-1 ${
+              i.reviewer_name
+                ? 'btn-outline'
+                : canAssign ? 'btn-primary' : 'btn-outline opacity-50'
+            }`}
+          >
+            <UserCheck className="w-3.5 h-3.5" />
+            {i.reviewer_name ? 'Reassign' : 'Assign'}
+          </button>
+        );
+      },
     },
   ];
 
@@ -247,17 +330,23 @@ export const ApplicationAssignmentPage: React.FC = () => {
               <div>
                 <label className="label">Select Review Officer</label>
                 <select
-                  value={selectedOfficer}
-                  onChange={e => setSelectedOfficer(e.target.value)}
-                  className="input-field"
-                >
-                  <option value="">— Choose an officer —</option>
-                  {officers.map((o: any) => (
-                    <option key={o.user_id || o.id} value={o.user_id || o.id}>
-                      {o.full_name} {o.current_queue_count != null ? `(${o.current_queue_count} active)` : ''}
-                    </option>
-                  ))}
-                </select>
+  value={selectedOfficer}
+  onChange={e => {
+    console.log('Selected officer ID:', e.target.value);
+    setSelectedOfficer(e.target.value);
+  }}
+  className="input-field"
+>
+  <option value="">— Choose an officer —</option>
+  {officers.map((o: any) => {
+    const officerId = o.user_id || o.id;
+    return (
+      <option key={officerId} value={officerId}>
+        {o.full_name} (ID: {officerId}) {o.current_queue_count != null ? `[${o.current_queue_count} active]` : ''}
+      </option>
+    );
+  })}
+</select>
               </div>
 
               <div className="flex items-center gap-3">

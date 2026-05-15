@@ -111,4 +111,10 @@ export const applicationsApi = {
     const res = await apiClient.get(`/payments/invoices/?application_id=${applicationId}`);
     return res.data;
   },
+
+  // Get permit details
+  getPermit: async (permitNumber: string) => {
+    const res = await apiClient.get(`/permits/${permitNumber}/`);
+    return res.data;
+  },
 };
