@@ -6,13 +6,13 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import {
   ArrowLeft, MessageSquarePlus, CheckCircle, XCircle, FileText,
-  Download, Users, Building, CheckSquare, AlertTriangle, Calendar,
+  Download, Users, Building, CheckSquare, AlertTriangle,
   ThumbsUp, ThumbsDown,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { differenceInDays } from 'date-fns';
 
-type DecisionModal = null | 'approve' | 'reject' | 'schedule';
+type DecisionModal = null | 'approve' | 'reject';
 
 export const ReviewWorkspacePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -25,8 +25,27 @@ export const ReviewWorkspacePage: React.FC = () => {
   const [docRejectModal, setDocRejectModal] = useState<string | null>(null);
   const [docRejectReason, setDocRejectReason] = useState('');
 
-  // Local document validation state (no backend endpoint exists for individual doc validation)
-  const [localValidations, setLocalValidations] = useState<Record<string, { status: 'ACCEPTED' | 'REJECTED'; notes?: string }>>({});
+  // Document validation persisted in localStorage (backend has no individual doc validation endpoint)
+  const STORAGE_KEY = `doc_validations_${id}`;
+  const [localValidations, setLocalValidations] = useState<Record<string, { status: 'ACCEPTED' | 'REJECTED'; notes?: string; savedAt: string }>>(() => {
+    try {
+      const saved = localStorage.getItem(`doc_validations_${id}`);
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+
+  const persistValidation = (docId: string, data: { status: 'ACCEPTED' | 'REJECTED'; notes?: string } | null) => {
+    setLocalValidations(prev => {
+      const next = { ...prev };
+      if (data === null) {
+        delete next[docId];
+      } else {
+        next[docId] = { ...data, savedAt: new Date().toISOString() };
+      }
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
 
   // Comment form
   const [newComment, setNewComment] = useState('');
@@ -38,48 +57,78 @@ export const ReviewWorkspacePage: React.FC = () => {
   const [rejectCitation, setRejectCitation] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Schedule inspection form
-  const [inspType, setInspType] = useState('FOUNDATION');
-  const [inspDate, setInspDate] = useState('');
-  const [inspNotes, setInspNotes] = useState('');
-
-  // Authenticated file download (docs require Bearer token)
+  // Authenticated file download
+  // Per OpenAPI spec, DocumentItem has NO file_url field.
+  // We fetch GET /reviews/workspace/{id}/ which may include file URLs inside document objects,
+  // OR we try to download via GET /applications/{appId}/documents/{docId}/ with auth.
   const handleDownload = async (doc: any) => {
-    const url = doc.file_url || doc.file_path || doc.file || doc.document_url || doc.url || doc.download_url;
-    if (!url) {
-      // Try constructing download URL from known API pattern
-      const token = localStorage.getItem('accessToken');
-      const downloadUrl = `https://acps.onrender.com/api/v1/applications/${id}/documents/${doc.document_id}/`;
-      try {
-        const res = await fetch(downloadUrl, { headers: { Authorization: `Bearer ${token}` } });
-        if (!res.ok) throw new Error('Download failed');
-        const blob = await res.blob();
-        const objUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = objUrl;
-        a.download = doc.file_name || `document_${doc.document_id}`;
-        a.click();
-        URL.revokeObjectURL(objUrl);
-      } catch {
-        toast.error('Cannot download file — URL not available from server');
+    const token = localStorage.getItem('accessToken');
+    // Check all possible URL fields the backend might return
+    const directUrl = doc.file_url || doc.file_path || doc.file || doc.document_url || doc.url || doc.download_url;
+    
+    const tryFetchAndDownload = async (url: string) => {
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error(`${res.status}`);
+      const contentType = res.headers.get('content-type') || '';
+      // If server returns JSON (metadata), try to find URL inside it
+      if (contentType.includes('application/json')) {
+        const json = await res.json();
+        const fileUrl = json.file_url || json.file_path || json.file || json.document_url;
+        if (fileUrl) {
+          window.open(fileUrl, '_blank');
+          return;
+        }
+        throw new Error('No file URL in response');
       }
+      // Binary file response — trigger download
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objUrl;
+      a.download = doc.file_name || `document_${doc.document_id}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objUrl);
+    };
+
+    try {
+      if (directUrl) {
+        await tryFetchAndDownload(directUrl);
+      } else {
+        // No direct URL — use the application document endpoint
+        const endpoint = `https://acps.onrender.com/api/v1/applications/${id}/documents/${doc.document_id}/`;
+        await tryFetchAndDownload(endpoint);
+      }
+    } catch (err: any) {
+      console.warn('Download attempt failed:', err.message);
+      // Last resort: open the workspace and let the user see it
+      toast.error(`Cannot download "${doc.file_name}" — the backend does not expose a direct file URL for this document.`);
+    }
+  };
+
+  const handleNeighborDownload = async (neighbor: any) => {
+    const token = localStorage.getItem('accessToken');
+    // Per spec, NeighborResponse.consent_file is a string (file URL)
+    const url = neighbor.consent_file || neighbor.consent_document_url || neighbor.file_url;
+    if (!url) {
+      toast.error('No consent file URL available');
       return;
     }
-    // If we have a direct URL, open it with auth header
-    const token = localStorage.getItem('accessToken');
     try {
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) {
-        // Try opening directly if auth not needed (public URL)
-        window.open(url, '_blank');
+        window.open(url, '_blank'); // Try opening directly if auth not needed
         return;
       }
       const blob = await res.blob();
       const objUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = objUrl;
-      a.download = doc.file_name || 'document';
+      a.download = `consent_${neighbor.neighbor_name || neighbor.neighbor_id}`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(objUrl);
     } catch {
       window.open(url, '_blank');
@@ -140,23 +189,30 @@ export const ReviewWorkspacePage: React.FC = () => {
     }
   };
 
-  // Document validation is local-state only (no backend endpoint exists per API docs)
+  // Document validation persisted to localStorage (backend has no individual doc validation endpoint)
   const handleValidateDoc = (docId: string, status: 'ACCEPTED' | 'REJECTED', reason?: string) => {
     if (status === 'REJECTED' && !reason) {
       setDocRejectModal(docId);
       setDocRejectReason('');
       return;
     }
-    setLocalValidations(prev => ({ ...prev, [docId]: { status, notes: reason } }));
-    toast.success(`Document marked as ${status === 'ACCEPTED' ? 'Accepted ✓' : 'Rejected ✗'}`);
+    persistValidation(docId, { status, notes: reason });
+    toast.success(`Document marked as ${status === 'ACCEPTED' ? 'Accepted ✓' : 'Rejected ✗'} — saved locally`);
     setDocRejectModal(null);
     setDocRejectReason('');
+  };
+
+  const handleClearDocValidation = (docId: string) => {
+    persistValidation(docId, null);
+    toast('Validation cleared');
   };
 
   const handleApprove = async () => {
     setSubmitting(true);
     try {
-      await reviewsApi.submitDecision(id!, { decision: 'ACCEPT' });
+      // OpenAPI spec: ReviewDecisionRequest.decision enum is APPROVED | REJECTED
+      await reviewsApi.submitDecision(id!, { decision: 'APPROVED' });
+      localStorage.removeItem(STORAGE_KEY); // clear persisted doc decisions on final submit
       toast.success('Application recommended for approval');
       navigate('/reviewer/dashboard');
     } catch {
@@ -171,11 +227,13 @@ export const ReviewWorkspacePage: React.FC = () => {
     if (!rejectCitation.trim()) { toast.error('Regulation citation is required'); return; }
     setSubmitting(true);
     try {
+      // OpenAPI spec: decision=REJECTED, notes (not rejection_reason), regulation_citation
       await reviewsApi.submitDecision(id!, {
-        decision: 'REJECT_WITH_COMMENTS',
-        rejection_reason: rejectReason,
+        decision: 'REJECTED',
+        notes: rejectReason,
         regulation_citation: rejectCitation,
       });
+      localStorage.removeItem(STORAGE_KEY); // clear persisted doc decisions on final submit
       toast.success('Application returned for revision');
       navigate('/reviewer/dashboard');
     } catch {
@@ -185,24 +243,9 @@ export const ReviewWorkspacePage: React.FC = () => {
     }
   };
 
-  const handleScheduleInspection = async () => {
-    if (!inspDate) { toast.error('Please select an inspection date'); return; }
-    setSubmitting(true);
-    try {
-      await reviewsApi.scheduleInspection(id!, {
-        inspection_type: inspType,
-        scheduled_date: inspDate,
-        notes: inspNotes,
-      });
-      toast.success('Inspection scheduled successfully');
-      setModal(null);
-      refresh();
-    } catch {
-      toast.error('Failed to schedule inspection');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  // Note: Inspections are auto-scheduled by the backend when the applicant submits
+  // POST /applications/{id}/commence/ — the reviewer does NOT schedule inspections.
+  // The schedule-inspection endpoint does not exist in the OpenAPI spec.
 
   if (loading) return <LoadingSpinner fullPage />;
   if (!workspace) return <div>Workspace not found</div>;
@@ -215,8 +258,13 @@ export const ReviewWorkspacePage: React.FC = () => {
   const openComments = comments.filter((c: any) => c.resolution_status === 'OPEN');
   const revCycle = app.revision_cycle || 0;
 
-  const allDocsAccepted = docs.length > 0 && docs.every((d: any) => d.validation_status === 'ACCEPTED');
-  const pendingDocs = docs.filter((d: any) => d.validation_status !== 'ACCEPTED').length;
+  // Check if all docs are validated (using local state since backend has no validation endpoint)
+  const allDocsValidated = docs.length > 0 && docs.every((d: any) => 
+    localValidations[d.document_id]?.status === 'ACCEPTED' || d.validation_status === 'ACCEPTED'
+  );
+  const pendingDocs = docs.filter((d: any) => 
+    !localValidations[d.document_id] && d.validation_status !== 'ACCEPTED'
+  ).length;
 
   return (
     <div className="h-[calc(100vh-80px)] flex flex-col -m-6 lg:-m-8">
@@ -240,13 +288,6 @@ export const ReviewWorkspacePage: React.FC = () => {
           <StatusBadge status={app.status === 'AWAITING_ASSIGNMENT' ? 'UNDER_REVIEW' : app.status} />
 
           <button
-            onClick={() => setModal('schedule')}
-            className="btn btn-outline text-xs py-1.5 px-3 gap-1"
-          >
-            <Calendar className="w-3.5 h-3.5" /> Schedule Inspection
-          </button>
-
-          <button
             onClick={() => setModal('reject')}
             className="btn btn-outline text-danger border-danger hover:bg-danger/10 text-xs py-1.5 px-3 gap-1"
           >
@@ -255,13 +296,13 @@ export const ReviewWorkspacePage: React.FC = () => {
 
           <button
             onClick={() => setModal('approve')}
-            disabled={!allDocsAccepted}
+            disabled={!allDocsValidated}
             className={`btn text-xs py-1.5 px-3 gap-1 font-medium rounded-lg ${
-              allDocsAccepted 
+              allDocsValidated 
                 ? 'bg-green-600 hover:bg-green-700 text-white shadow-sm' 
                 : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
             }`}
-            title={allDocsAccepted ? 'Recommend for approval' : `Accept all ${pendingDocs} pending documents first`}
+            title={allDocsValidated ? 'Recommend for approval' : `Accept all ${pendingDocs} pending documents first`}
           >
             <CheckCircle className="w-3.5 h-3.5" /> Recommend Approval
           </button>
@@ -326,13 +367,6 @@ export const ReviewWorkspacePage: React.FC = () => {
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                          doc.validation_status === 'ACCEPTED' ? 'bg-green-100 text-green-700' :
-                          doc.validation_status === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                          'bg-yellow-100 text-yellow-700'
-                        }`}>
-                          {doc.validation_status || 'PENDING'}
-                        </span>
                         {(() => {
                           const local = localValidations[doc.document_id];
                           const validStatus = local?.status || doc.validation_status;
@@ -356,7 +390,17 @@ export const ReviewWorkspacePage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex gap-2 mt-3">
+                    {/* Saved timestamp */}
+                    {localValidations[doc.document_id]?.savedAt && (
+                      <p className="text-xs text-slate-400 mt-2">
+                        Saved {new Date(localValidations[doc.document_id].savedAt).toLocaleString()}
+                        {localValidations[doc.document_id].notes && (
+                          <span className="ml-2 italic">— "{localValidations[doc.document_id].notes}"</span>
+                        )}
+                      </p>
+                    )}
+
+                    <div className="flex gap-2 mt-3 flex-wrap">
                       <button
                         onClick={() => handleValidateDoc(doc.document_id, 'ACCEPTED')}
                         disabled={localValidations[doc.document_id]?.status === 'ACCEPTED'}
@@ -377,6 +421,14 @@ export const ReviewWorkspacePage: React.FC = () => {
                       >
                         <MessageSquarePlus className="w-3.5 h-3.5" /> Comment
                       </button>
+                      {localValidations[doc.document_id] && (
+                        <button
+                          onClick={() => handleClearDocValidation(doc.document_id)}
+                          className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 font-medium ml-auto"
+                        >
+                          ✕ Clear
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -421,18 +473,13 @@ export const ReviewWorkspacePage: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full">{n.status || 'SUBMITTED'}</span>
-                      {(() => {
-                        const url = n.consent_document_url || n.file_url || n.file || n.document_url || null;
-                        return url ? (
-                          <a href={url} target="_blank" rel="noreferrer" className="p-1.5 text-primary hover:text-primary/80 rounded-lg hover:bg-primary/5 inline-flex" title="Download consent">
-                            <Download className="w-4 h-4" />
-                          </a>
-                        ) : (
-                          <span className="p-1.5 text-slate-300 inline-flex cursor-not-allowed" title="Consent file not available">
-                            <Download className="w-4 h-4" />
-                          </span>
-                        );
-                      })()}
+                      <button
+                        onClick={() => handleNeighborDownload(n)}
+                        className="p-1.5 text-primary hover:text-primary/80 rounded-lg hover:bg-primary/5 inline-flex"
+                        title="Download consent document"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -598,46 +645,7 @@ export const ReviewWorkspacePage: React.FC = () => {
       )}
 
       {/* Schedule inspection */}
-      {modal === 'schedule' && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
-            <h2 className="text-xl font-bold text-slate-800 mb-1">Schedule Inspection</h2>
-            <p className="text-sm text-slate-500 mb-5">An inspector will be notified automatically.</p>
-            <div className="space-y-4">
-              <div>
-                <label className="label">Inspection Type</label>
-                <select value={inspType} onChange={e => setInspType(e.target.value)} className="input-field">
-                  <option value="FOUNDATION">Foundation</option>
-                  <option value="STRUCTURAL">Structural</option>
-                  <option value="ELECTRICAL">Electrical</option>
-                  <option value="PLUMBING">Plumbing</option>
-                  <option value="FINAL">Final</option>
-                </select>
-              </div>
-              <div>
-                <label className="label">Scheduled Date</label>
-                <input
-                  type="date"
-                  value={inspDate}
-                  onChange={e => setInspDate(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                  className="input-field"
-                />
-              </div>
-              <div>
-                <label className="label">Notes (optional)</label>
-                <textarea value={inspNotes} onChange={e => setInspNotes(e.target.value)} rows={2} className="input-field" placeholder="Any additional instructions..." />
-              </div>
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => setModal(null)} className="btn btn-outline flex-1">Cancel</button>
-              <button onClick={handleScheduleInspection} disabled={submitting} className="btn btn-primary flex-1">
-                {submitting ? 'Scheduling...' : 'Schedule'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
       {/* Document Rejection Modal */}
       {docRejectModal && (
         <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
