@@ -40,13 +40,6 @@ export const reviewsApi = {
       throw err;
     }
   },
-  scheduleInspection: async (
-    applicationId: string,
-    data: { inspection_type: string; scheduled_date: string; notes?: string }
-  ) => {
-    const res = await apiClient.post(`/applications/${applicationId}/schedule-inspection/`, data);
-    return res.data;
-  },
   submitDecision: async (applicationId: string, data: any) => {
     const res = await apiClient.post(`/applications/${applicationId}/review-decision/`, data);
     return res.data;
