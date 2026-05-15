@@ -32,6 +32,8 @@ import { ConfigPage, ReportsPage } from '@/pages/admin/AdminPages';
 import { PaymentManagementPage } from '@/pages/admin/PaymentManagementPage';
 import { AuditLogPage } from '@/pages/admin/AuditLogPage';
 import { ApplicationAssignmentPage } from '@/pages/admin/ApplicationAssignmentPage';
+import { AdminApplicationsPage } from '@/pages/admin/AdminApplicationsPage';
+import { AdminApplicationDetailPage } from '@/pages/admin/AdminApplicationDetailPage';
 import { ReviewerDashboard } from '@/pages/reviewer/DashboardPage';
 import { ReviewWorkspacePage } from '@/pages/reviewer/ReviewWorkspacePage';
 
@@ -118,6 +120,8 @@ export const router = createBrowserRouter([
     children: [
       { path: 'dashboard', element: <AdminDashboard /> },
       { path: 'users', element: <UserManagementPage /> },
+      { path: 'applications', element: <AdminApplicationsPage /> },
+      { path: 'applications/:id', element: <AdminApplicationDetailPage /> },
       { path: 'payments', element: <PaymentManagementPage /> },
       { path: 'assignments', element: <ApplicationAssignmentPage /> },
       { path: 'config', element: <ConfigPage /> },

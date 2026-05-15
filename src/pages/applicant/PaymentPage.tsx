@@ -82,7 +82,8 @@ export const PaymentPage: React.FC = () => {
 
     setProcessing(true);
     try {
-      const response = await paymentsApi.pay(invoice.invoice_id, { payment_method: selectedMethod });
+      const targetId = invoice.invoice_id || invoice.id;
+      const response = await paymentsApi.pay(targetId, { payment_method: selectedMethod });
 
       if (response.status === 'CONFIRMED') {
         toast.success('Payment successful! Your application is now awaiting assignment.');
@@ -114,9 +115,13 @@ export const PaymentPage: React.FC = () => {
 
     setProcessing(true);
     try {
-      const response = await paymentsApi.pay(invoice.invoice_id, { payment_method: 'BANK_TRANSFER' });
+      const targetId = invoice.invoice_id || invoice.id;
+      const response = await paymentsApi.pay(targetId, { payment_method: 'BANK_TRANSFER' });
 
-      if (response.status === 'AWAITING_MANUAL_CONFIRMATION' && response.bank_details) {
+      if (response.status === 'AWAITING_UPLOAD' && response.bank_details) {
+        setBankDetails(response.bank_details);
+        toast.success(response.message || 'Please upload your bank receipt for confirmation');
+      } else if (response.status === 'AWAITING_MANUAL_CONFIRMATION' && response.bank_details) {
         setBankDetails(response.bank_details);
         toast.success(response.message || 'Please upload your bank receipt for confirmation');
       }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import {
@@ -9,10 +9,28 @@ import { useNotificationStore } from '@/stores/notificationStore';
 
 export const AuthenticatedLayout: React.FC = () => {
   const { user, logout } = useAuthStore();
-  const { unreadCount } = useNotificationStore();
+  const { unreadCount, notifications, fetchNotifications, markAsRead, markAllAsRead } = useNotificationStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showNotif, setShowNotif] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setShowNotif(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -42,6 +60,7 @@ export const AuthenticatedLayout: React.FC = () => {
       case 'ADMIN':
         return [
           { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
+          { name: 'Applications', path: '/admin/applications', icon: FileText },
           { name: 'User Management', path: '/admin/users', icon: Users },
           { name: 'Payments', path: '/admin/payments', icon: Banknote },
           { name: 'Assignments', path: '/admin/assignments', icon: UserCheck },
@@ -145,13 +164,64 @@ export const AuthenticatedLayout: React.FC = () => {
 
           <div className="flex-1" />
 
-          <div className="flex items-center gap-2">
-            <button className="relative p-2 text-slate-400 hover:text-primary hover:bg-slate-50 rounded-xl transition-colors">
-              <Bell className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-highlight rounded-full ring-2 ring-white" />
+          <div className="flex items-center gap-2" ref={notifRef}>
+            <div className="relative">
+              <button 
+                onClick={() => setShowNotif(!showNotif)}
+                className={`relative p-2 rounded-xl transition-colors ${showNotif ? 'bg-primary/5 text-primary' : 'text-slate-400 hover:text-primary hover:bg-slate-50'}`}
+              >
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-highlight rounded-full ring-2 ring-white" />
+                )}
+              </button>
+
+              {/* Notification Dropdown */}
+              {showNotif && (
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden z-50">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
+                    <h3 className="font-bold text-slate-800">Notifications</h3>
+                    {unreadCount > 0 && (
+                      <button 
+                        onClick={markAllAsRead}
+                        className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+                      >
+                        Mark all as read
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="max-h-96 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center text-slate-500 text-sm">
+                        <Bell className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+                        No notifications yet
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-slate-100">
+                        {notifications.map((notif: any) => (
+                          <div 
+                            key={notif.notification_id || Math.random()} 
+                            className={`p-4 transition-colors hover:bg-slate-50 cursor-pointer ${!notif.is_read ? 'bg-primary/5' : ''}`}
+                            onClick={() => {
+                              if (!notif.is_read) markAsRead(notif.notification_id);
+                              setShowNotif(false);
+                            }}
+                          >
+                            <p className={`text-sm ${!notif.is_read ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>
+                              {notif.message}
+                            </p>
+                            <span className="text-xs text-slate-400 mt-1 block">
+                              {new Date(notif.created_at).toLocaleString()}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
           </div>
         </header>
 

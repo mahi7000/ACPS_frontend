@@ -49,7 +49,7 @@ export const ApplicationAssignmentPage: React.FC = () => {
     setAssigning(true);
     try {
       await adminApi.assignReviewer(modalApp.application_id, {
-        ...(autoAssign ? { auto_assign: true } : { reviewer_id: selectedOfficer }),
+        ...(autoAssign ? { auto_assign: true } : { assigned_officer_id: selectedOfficer }),
       });
       toast.success(`Application ${modalApp.arn} assigned successfully`);
       setModalApp(null);
