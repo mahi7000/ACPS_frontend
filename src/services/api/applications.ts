@@ -117,4 +117,16 @@ export const applicationsApi = {
     const res = await apiClient.get(`/permits/${permitNumber}/`);
     return res.data;
   },
+
+  getPermitByApplicationId: async (applicationId: string) => {
+    const res = await apiClient.get(`/applications/${applicationId}/permits/`);
+    return res.data;
+  },
+
+  downloadPermitDocument: async (permitNumber: string) => {
+    const res = await apiClient.get(`/permits/${permitNumber}/download/`, {
+      responseType: 'blob'
+    });
+    return res.data;
+  },
 };

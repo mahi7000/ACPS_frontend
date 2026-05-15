@@ -13,6 +13,7 @@ import {
   Building, FileText, Users, Clock, MessageSquare,
   Download, ArrowLeft, AlertCircle, Edit3, Save, X,
   CheckCircle, PlusCircle, Trash2, Award, ExternalLink,
+  Calendar, User, Hash, FileCheck, MapPin
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -25,6 +26,7 @@ export const ApplicationDetailPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('details');
   const [permitData, setPermitData] = useState<any>(null);
   const [loadingPermit, setLoadingPermit] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   // Draft editing state
   const [isEditingDetails, setIsEditingDetails] = useState(false);
@@ -45,12 +47,12 @@ export const ApplicationDetailPage: React.FC = () => {
     try {
       const data = await applicationsApi.getById(id!);
       console.log('Application data:', data);
-      console.log('Permit number:', data.permit_number);
       setApp(data);
       
-      // If application has a permit number, fetch permit details
-      if (data.permit_number) {
-        fetchPermitDetails(data.permit_number);
+      // Fetch permit data from applications/{id}/permits/ endpoint for CONSENT_ISSUED or PERMIT_ISSUED
+      const permitStatuses = ['CONSENT_ISSUED', 'PERMIT_ISSUED', 'COMPLETED'];
+      if (permitStatuses.includes(data.status)) {
+        await fetchPermitByApplicationId();
       }
     } catch {
       toast.error('Failed to load application details');
@@ -59,14 +61,33 @@ export const ApplicationDetailPage: React.FC = () => {
     }
   };
 
-  const fetchPermitDetails = async (permitNumber: string) => {
+  // Fetch permit using application ID endpoint (returns array)
+  const fetchPermitByApplicationId = async () => {
     setLoadingPermit(true);
     try {
-      const permitInfo = await applicationsApi.getPermit(permitNumber);
-      setPermitData(permitInfo);
-    } catch (err) {
+      const permitInfo = await applicationsApi.getPermitByApplicationId(id!);
+      console.log('Permit data from application endpoint:', permitInfo);
+      
+      // Handle array response - extract the first permit
+      let permitDataObj = null;
+      if (Array.isArray(permitInfo) && permitInfo.length > 0) {
+        // Get the active permit or the first one
+        permitDataObj = permitInfo.find((p: any) => p.status === 'ACTIVE') || permitInfo[0];
+      } else if (!Array.isArray(permitInfo) && permitInfo !== null) {
+        permitDataObj = permitInfo;
+      }
+      
+      setPermitData(permitDataObj);
+      
+      // Update app with permit_number if available
+      if (permitDataObj?.permit_number && !app?.permit_number) {
+        setApp((prev: any) => ({ ...prev, permit_number: permitDataObj.permit_number }));
+      }
+    } catch (err: any) {
       console.error('Failed to fetch permit:', err);
-      // Don't show error toast - permit might not be accessible yet
+      if (err.response?.status !== 404) {
+        toast.error('Failed to load permit information');
+      }
     } finally {
       setLoadingPermit(false);
     }
@@ -100,7 +121,9 @@ export const ApplicationDetailPage: React.FC = () => {
 
   const isDraft = app.status === 'DRAFT';
   const hasPermit = app.status === 'PERMIT_ISSUED' || app.status === 'CONSENT_ISSUED' || app.status === 'COMPLETED';
-  const permitNumber = app.permit_number || permitData?.permit_number;
+  const permitNumber = permitData?.permit_number || app.permit_number;
+  const isConsent = permitData?.permit_type === 'PLANNING_CONSENT' || app.status === 'CONSENT_ISSUED';
+  // const isConstructionPermit = permitData?.permit_type === 'CONSTRUCTION' || app.status === 'PERMIT_ISSUED';
 
   const handlePayNow = () => {
     if (app.invoice_id) {
@@ -119,16 +142,64 @@ export const ApplicationDetailPage: React.FC = () => {
     toast.error('Invoice information not available. Please contact support.');
   };
 
-  const handleDownloadPermit = () => {
-    if (permitNumber) {
-      // Open permit verification page in new tab
-      window.open(`/api/v1/permits/${permitNumber}/`, '_blank');
+  const handleDownloadPermitDocument = async () => {
+  if (!permitData?.permit_number) {
+    toast.error('No permit number available');
+    return;
+  }
+  
+  setDownloading(true);
+  try {
+    const permitNumber = permitData.permit_number;
+    const accessToken = localStorage.getItem('access_token');
+    
+    // Call the dedicated download endpoint
+    const response = await fetch(`/api/v1/permits/${permitNumber}/download/`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Download failed: ${response.status} ${response.statusText}`);
     }
-  };
+    
+    // Get the filename from Content-Disposition header or create one
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let filename = permitData.permit_type === 'PLANNING_CONSENT' 
+      ? `planning_consent_${permitNumber}.pdf`
+      : `construction_permit_${permitNumber}.pdf`;
+    
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+      if (match && match[1]) {
+        filename = match[1].replace(/['"]/g, '');
+      }
+    }
+    
+    // Create blob and trigger download
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(blobUrl);
+    
+    toast.success('Permit downloaded successfully');
+  } catch (error) {
+    console.error('Download failed:', error);
+    toast.error('Failed to download permit. Please try again.');
+  } finally {
+    setDownloading(false);
+  }
+};
 
   const handleVerifyPermit = () => {
     if (permitNumber) {
-      // Open public verification page
       window.open(`/api/v1/verify/${permitNumber}/`, '_blank');
     }
   };
@@ -336,14 +407,19 @@ export const ApplicationDetailPage: React.FC = () => {
         <StatusBadge status={app.status} size="md" />
         
         {/* Download Permit Button */}
-        {hasPermit && permitNumber && (
+        {hasPermit && permitData && (
           <div className="flex gap-2">
             <button 
-              onClick={handleDownloadPermit}
+              onClick={handleDownloadPermitDocument}
+              disabled={downloading}
               className="btn btn-primary inline-flex items-center gap-2"
             >
-              <Download className="w-4 h-4" />
-              {t('app_detail.download_permit')}
+              {downloading ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              {isConsent ? 'Download Consent' : 'Download Permit'}
             </button>
             <button 
               onClick={handleVerifyPermit}
@@ -371,26 +447,6 @@ export const ApplicationDetailPage: React.FC = () => {
           </button>
         )}
       </div>
-
-      {/* Permit Banner */}
-      {hasPermit && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
-          <Award className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
-          <div>
-            <p className="font-semibold text-green-800">
-              {app.status === 'PERMIT_ISSUED' ? t('app_detail.permit_issued') : 
-               app.status === 'CONSENT_ISSUED' ? t('app_detail.consent_issued') : 
-               t('app_detail.completion_issued')}
-            </p>
-            <p className="text-sm text-green-700 mt-0.5">
-              {permitNumber && <>{t('app_detail.permit_number_label')} <strong>{permitNumber}</strong></>}
-              {permitData?.issue_date && <> • {t('app_detail.issued_label')} {format(new Date(permitData.issue_date), 'PPP')}</>}
-              {permitData?.expiry_date && <> • {t('app_detail.expires_label')} {format(new Date(permitData.expiry_date), 'PPP')}</>}
-            </p>
-            {loadingPermit && <p className="text-sm text-green-600 mt-1">{t('app_detail.loading_permit')}</p>}
-          </div>
-        </div>
-      )}
 
       {/* Draft banner */}
       {isDraft && (
@@ -434,111 +490,248 @@ export const ApplicationDetailPage: React.FC = () => {
 
         {/* ── TAB: Details ── */}
         {activeTab === 'details' && (
-          <div>
-            {isDraft && !isEditingDetails && (
-              <div className="flex justify-end mb-4">
-                <button onClick={handleStartEdit} className="btn btn-outline text-sm gap-2">
-                  <Edit3 className="w-4 h-4" /> {t('app_detail.edit_details')}
-                </button>
+          <div className="space-y-6">
+            {/* Application Information Section */}
+            <div>
+              <h2 className="text-lg font-semibold text-slate-800 border-b pb-2 mb-4">Application Information</h2>
+              {isDraft && !isEditingDetails && (
+                <div className="flex justify-end mb-4">
+                  <button onClick={handleStartEdit} className="btn btn-outline text-sm gap-2">
+                    <Edit3 className="w-4 h-4" /> {t('app_detail.edit_details')}
+                  </button>
+                </div>
+              )}
+
+              {isEditingDetails ? (
+                <form onSubmit={handleSubmit(handleSaveDetails)} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                      <label className="label">{t('app_detail.intended_use_label')}</label>
+                      <input type="text" {...register('intended_use', { required: true })} className="input-field" />
+                      {errors.intended_use && <p className="text-red-500 text-xs mt-1">{t('app_detail.required_field')}</p>}
+                    </div>
+                    <div>
+                      <label className="label">{t('app_detail.project_value_label')}</label>
+                      <input type="number" {...register('project_value_etb', { required: true, valueAsNumber: true })} className="input-field" />
+                    </div>
+                    <div>
+                      <label className="label">{t('app_detail.height_label')}</label>
+                      <input type="number" step="0.1" {...register('height_m', { required: true, valueAsNumber: true })} className="input-field" />
+                    </div>
+                    <div>
+                      <label className="label">{t('app_detail.floor_area_label')}</label>
+                      <input type="number" step="0.1" {...register('floor_area_sqm', { valueAsNumber: true })} className="input-field" />
+                    </div>
+                    <div>
+                      <label className="label">{t('app_detail.floors_above_label')}</label>
+                      <input type="number" {...register('floors_above', { valueAsNumber: true })} className="input-field" />
+                    </div>
+                    <div>
+                      <label className="label">{t('app_detail.floors_below_label')}</label>
+                      <input type="number" {...register('floors_below', { valueAsNumber: true })} className="input-field" />
+                    </div>
+                    <div className="md:col-span-2 lg:col-span-3">
+                      <label className="label">{t('app_detail.plot_address_label')}</label>
+                      <input type="text" {...register('plot_address')} className="input-field" />
+                    </div>
+                    <div>
+                      <label className="label">{t('app_detail.subcity_label')}</label>
+                      <input type="text" {...register('subcity_id')} className="input-field" />
+                    </div>
+                    <div>
+                      <label className="label">{t('app_detail.woreda_label')}</label>
+                      <input type="text" {...register('woreda')} className="input-field" />
+                    </div>
+                    <div>
+                      <label className="label">{t('app_detail.gps_lat_label')}</label>
+                      <input type="number" step="0.000001" {...register('plot_gps_lat', { valueAsNumber: true })} className="input-field" />
+                    </div>
+                    <div>
+                      <label className="label">{t('app_detail.gps_lng_label')}</label>
+                      <input type="number" step="0.000001" {...register('plot_gps_lng', { valueAsNumber: true })} className="input-field" />
+                    </div>
+                    <div>
+                      <label className="label">{t('app_detail.architect_name_label')}</label>
+                      <input type="text" {...register('architect_name')} className="input-field" />
+                    </div>
+                    <div>
+                      <label className="label">{t('app_detail.architect_license_label')}</label>
+                      <input type="text" {...register('architect_license')} className="input-field" />
+                    </div>
+                    <div>
+                      <label className="label">{t('app_detail.contractor_name_label')}</label>
+                      <input type="text" {...register('contractor_name')} className="input-field" />
+                    </div>
+                    <div>
+                      <label className="label">{t('app_detail.contractor_license_label')}</label>
+                      <input type="text" {...register('contractor_license')} className="input-field" />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button type="submit" disabled={savingDetails} className="btn btn-primary gap-2">
+                      <Save className="w-4 h-4" />
+                      {savingDetails ? t('app_detail.saving') : t('app_detail.save_changes')}
+                    </button>
+                    <button type="button" onClick={() => setIsEditingDetails(false)} className="btn btn-outline gap-2">
+                      <X className="w-4 h-4" /> {t('app_detail.cancel')}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[
+                    [t('app_detail.detail_intended_use'), app.intended_use],
+                    [t('app_detail.detail_category'), app.building_category],
+                    [t('app_detail.detail_project_value'), `${(app.project_value_etb || 0).toLocaleString()} ETB`],
+                    [t('app_detail.detail_address'), app.plot_address],
+                    [t('app_detail.detail_subcity_woreda'), `${app.subcity_id} / ${app.woreda}`],
+                    [t('app_detail.detail_height_area'), `${app.height_m}m / ${app.floor_area_sqm} sqm`],
+                    [t('app_detail.detail_floors'), `${app.floors_above} / ${app.floors_below}`],
+                    [t('app_detail.detail_architect'), `${app.architect_name} (${app.architect_license})`],
+                    [t('app_detail.detail_contractor'), app.contractor_name || t('app_detail.no_file')],
+                  ].map(([label, value]) => (
+                    <div key={label}>
+                      <p className="text-sm text-slate-500">{label}</p>
+                      <p className="font-medium text-slate-800">{value || '—'}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Permit Information Card - Shown when permit data is available */}
+            {hasPermit && permitData && !loadingPermit && (
+              <div className="mt-6 border-t border-slate-200 pt-6">
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200 overflow-hidden">
+                  <div className="bg-green-100 px-4 py-3 border-b border-green-200">
+                    <div className="flex items-center gap-2">
+                      <FileCheck className="w-5 h-5 text-green-700" />
+                      <h3 className="font-semibold text-green-800">
+                        {isConsent ? 'Planning Consent Details' : 'Construction Permit Details'}
+                      </h3>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {/* Permit Number */}
+                      <div className="flex items-start gap-2">
+                        <Hash className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-xs text-green-600">Permit Number</p>
+                          <p className="font-mono font-medium text-green-900">{permitData.permit_number || '—'}</p>
+                        </div>
+                      </div>
+
+                      {/* Permit Type */}
+                      <div className="flex items-start gap-2">
+                        <FileText className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-xs text-green-600">Permit Type</p>
+                          <p className="font-medium text-green-900">
+                            {permitData.permit_type === 'PLANNING_CONSENT' ? 'Planning Consent' : 
+                             permitData.permit_type === 'CONSTRUCTION' ? 'Construction Permit' : 
+                             permitData.permit_type || '—'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Status */}
+                      <div className="flex items-start gap-2">
+                        <Award className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-xs text-green-600">Status</p>
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                            permitData.status === 'ACTIVE' ? 'bg-green-200 text-green-800' : 
+                            permitData.status === 'EXPIRED' ? 'bg-red-200 text-red-800' : 
+                            'bg-yellow-200 text-yellow-800'
+                          }`}>
+                            {permitData.status || '—'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Issue Date */}
+                      <div className="flex items-start gap-2">
+                        <Calendar className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-xs text-green-600">Issue Date</p>
+                          <p className="font-medium text-green-900">
+                            {permitData.issue_date ? format(new Date(permitData.issue_date), 'PPP') : '—'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Expiry Date */}
+                      <div className="flex items-start gap-2">
+                        <Calendar className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-xs text-green-600">Expiry Date</p>
+                          <p className="font-medium text-green-900">
+                            {permitData.expiry_date ? format(new Date(permitData.expiry_date), 'PPP') : '—'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Issued By */}
+                      <div className="flex items-start gap-2">
+                        <User className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-xs text-green-600">Issued By</p>
+                          <p className="font-medium text-green-900">Officer ID: {permitData.issued_by || '—'}</p>
+                        </div>
+                      </div>
+
+                      {/* Plot Address (from permit) */}
+                      {permitData.plot_address && (
+                        <div className="flex items-start gap-2 md:col-span-2">
+                          <MapPin className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-xs text-green-600">Plot Address</p>
+                            <p className="font-medium text-green-900">{permitData.plot_address}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ARN */}
+                      {permitData.arn && (
+                        <div className="flex items-start gap-2">
+                          <Hash className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-xs text-green-600">Application Reference</p>
+                            <p className="font-mono text-sm text-green-900">{permitData.arn}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="mt-4 pt-3 border-t border-green-200 flex gap-3">
+                      <button 
+                        onClick={handleDownloadPermitDocument}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors"
+                      >
+                        <Download className="w-4 h-4" />
+                        {isConsent ? 'Download Planning Consent' : 'Download Construction Permit'}
+                      </button>
+                      <button 
+                        onClick={handleVerifyPermit}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 border border-green-300 bg-white text-green-700 hover:bg-green-50 text-sm rounded-lg transition-colors"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Verify Publicly
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
-            {isEditingDetails ? (
-              <form onSubmit={handleSubmit(handleSaveDetails)} className="space-y-6">
-                <h2 className="text-lg font-semibold text-slate-800 border-b pb-2">{t('app_detail.edit_building_title')}</h2>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div>
-                    <label className="label">{t('app_detail.intended_use_label')}</label>
-                    <input type="text" {...register('intended_use', { required: true })} className="input-field" />
-                    {errors.intended_use && <p className="text-red-500 text-xs mt-1">{t('app_detail.required_field')}</p>}
-                  </div>
-                  <div>
-                    <label className="label">{t('app_detail.project_value_label')}</label>
-                    <input type="number" {...register('project_value_etb', { required: true, valueAsNumber: true })} className="input-field" />
-                  </div>
-                  <div>
-                    <label className="label">{t('app_detail.height_label')}</label>
-                    <input type="number" step="0.1" {...register('height_m', { required: true, valueAsNumber: true })} className="input-field" />
-                  </div>
-                  <div>
-                    <label className="label">{t('app_detail.floor_area_label')}</label>
-                    <input type="number" step="0.1" {...register('floor_area_sqm', { valueAsNumber: true })} className="input-field" />
-                  </div>
-                  <div>
-                    <label className="label">{t('app_detail.floors_above_label')}</label>
-                    <input type="number" {...register('floors_above', { valueAsNumber: true })} className="input-field" />
-                  </div>
-                  <div>
-                    <label className="label">{t('app_detail.floors_below_label')}</label>
-                    <input type="number" {...register('floors_below', { valueAsNumber: true })} className="input-field" />
-                  </div>
-                  <div className="md:col-span-2 lg:col-span-3">
-                    <label className="label">{t('app_detail.plot_address_label')}</label>
-                    <input type="text" {...register('plot_address')} className="input-field" />
-                  </div>
-                  <div>
-                    <label className="label">{t('app_detail.subcity_label')}</label>
-                    <input type="text" {...register('subcity_id')} className="input-field" />
-                  </div>
-                  <div>
-                    <label className="label">{t('app_detail.woreda_label')}</label>
-                    <input type="text" {...register('woreda')} className="input-field" />
-                  </div>
-                  <div>
-                    <label className="label">{t('app_detail.gps_lat_label')}</label>
-                    <input type="number" step="0.000001" {...register('plot_gps_lat', { valueAsNumber: true })} className="input-field" />
-                  </div>
-                  <div>
-                    <label className="label">{t('app_detail.gps_lng_label')}</label>
-                    <input type="number" step="0.000001" {...register('plot_gps_lng', { valueAsNumber: true })} className="input-field" />
-                  </div>
-                  <div>
-                    <label className="label">{t('app_detail.architect_name_label')}</label>
-                    <input type="text" {...register('architect_name')} className="input-field" />
-                  </div>
-                  <div>
-                    <label className="label">{t('app_detail.architect_license_label')}</label>
-                    <input type="text" {...register('architect_license')} className="input-field" />
-                  </div>
-                  <div>
-                    <label className="label">{t('app_detail.contractor_name_label')}</label>
-                    <input type="text" {...register('contractor_name')} className="input-field" />
-                  </div>
-                  <div>
-                    <label className="label">{t('app_detail.contractor_license_label')}</label>
-                    <input type="text" {...register('contractor_license')} className="input-field" />
-                  </div>
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button type="submit" disabled={savingDetails} className="btn btn-primary gap-2">
-                    <Save className="w-4 h-4" />
-                    {savingDetails ? t('app_detail.saving') : t('app_detail.save_changes')}
-                  </button>
-                  <button type="button" onClick={() => setIsEditingDetails(false)} className="btn btn-outline gap-2">
-                    <X className="w-4 h-4" /> {t('app_detail.cancel')}
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[
-                  [t('app_detail.detail_intended_use'), app.intended_use],
-                  [t('app_detail.detail_category'), app.building_category],
-                  [t('app_detail.detail_project_value'), `${(app.project_value_etb || 0).toLocaleString()} ETB`],
-                  [t('app_detail.detail_address'), app.plot_address],
-                  [t('app_detail.detail_subcity_woreda'), `${app.subcity_id} / ${app.woreda}`],
-                  [t('app_detail.detail_height_area'), `${app.height_m}m / ${app.floor_area_sqm} sqm`],
-                  [t('app_detail.detail_floors'), `${app.floors_above} / ${app.floors_below}`],
-                  [t('app_detail.detail_architect'), `${app.architect_name} (${app.architect_license})`],
-                  [t('app_detail.detail_contractor'), app.contractor_name || t('app_detail.no_file')],
-                ].map(([label, value]) => (
-                  <div key={label}>
-                    <p className="text-sm text-slate-500">{label}</p>
-                    <p className="font-medium text-slate-800">{value}</p>
-                  </div>
-                ))}
+            {/* Loading state for permit */}
+            {hasPermit && loadingPermit && (
+              <div className="mt-6 flex justify-center py-4">
+                <LoadingSpinner />
+                <span className="ml-2 text-sm text-slate-500">Loading permit details...</span>
               </div>
             )}
           </div>
